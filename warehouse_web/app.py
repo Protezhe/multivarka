@@ -465,6 +465,10 @@ def api_toggle_skip_cooking():
         # Получаем новый статус
         new_status = updated_recipe['меню'][meal_type].get('skip_cooking', False)
         
+        # Пересчитываем список покупок для обновленного рецепта
+        sklad = load_sklad()
+        needed_products = analyze_ingredients(updated_recipe, sklad)
+        
         # Формируем сообщение
         status_text = "не готовить" if new_status else "готовить"
         message = f"Блюдо '{meal_type}' теперь отмечено как '{status_text}'"
@@ -473,7 +477,8 @@ def api_toggle_skip_cooking():
             'success': True,
             'message': message,
             'meal_type': meal_type,
-            'skip_cooking': new_status
+            'skip_cooking': new_status,
+            'needed_products': needed_products
         })
         
     except Exception as e:

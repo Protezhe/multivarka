@@ -442,8 +442,22 @@ function cookMeal(mealName) {
     });
 }
 
+// Функция для обновления всех статусов продуктов на странице
+function updateAllProductStatuses() {
+    const expirationInputs = document.querySelectorAll('.expiration-date');
+    expirationInputs.forEach(input => {
+        const productName = input.dataset.product;
+        const expirationDate = input.value;
+        if (productName) {
+            updateProductStatus(productName, expirationDate);
+        }
+    });
+}
+
 // Автоматическое сохранение при изменении значения
 document.addEventListener('DOMContentLoaded', function() {
+    // Обновляем все статусы продуктов при загрузке страницы
+    updateAllProductStatuses();
     const inputs = document.querySelectorAll('.quick-edit');
     inputs.forEach(input => {
         input.addEventListener('change', function() {
@@ -1098,6 +1112,11 @@ function toggleSkipCooking(mealType) {
             
             // Уведомление убрано по запросу пользователя
             
+            // Обновляем список покупок после изменения статуса
+            if (data.needed_products !== undefined) {
+                updateShoppingList(data.needed_products);
+            }
+            
             // Разблокируем кнопку после успешного выполнения
             button.disabled = false;
         } else {
@@ -1113,6 +1132,13 @@ function toggleSkipCooking(mealType) {
         button.innerHTML = originalContent;
         button.disabled = false;
     });
+}
+
+// Функция для обновления списка покупок после переключения статуса блюда
+function updateShoppingListAfterToggle(mealType, skipStatus) {
+    // Список покупок уже обновлен в ответе API toggle_skip_cooking
+    // Эта функция вызывается из toggleSkipCooking с обновленными данными
+    console.log(`Статус ${mealType} изменен на: ${skipStatus ? 'не готовить' : 'готовить'}`);
 }
 
 // Функция для обновления статуса продукта на основе срока годности
@@ -1144,20 +1170,37 @@ function updateProductStatus(productName, expirationDate) {
         return;
     }
     
-    const statusBadge = warehouseItem.querySelector('.badge');
-    if (!statusBadge) {
-        console.log(`Не найден badge для ${productName}`);
+    // Ищем badge в колонке статуса (вторая колонка с классом col-md-2)
+    const statusColumn = warehouseItem.querySelector('.col-md-2.text-center');
+    if (!statusColumn) {
+        console.log(`Не найден столбец статуса для ${productName}`);
         return;
     }
     
+    let statusBadge = statusColumn.querySelector('.badge');
+    if (!statusBadge) {
+        // Если badge не найден, создаем его
+        statusBadge = document.createElement('span');
+        statusBadge.className = 'badge';
+        statusColumn.appendChild(statusBadge);
+    }
+    
     // Если срок годности не указан - не показываем никакого статуса
-    if (!expirationDate) {
+    if (!expirationDate || expirationDate.trim() === '') {
         statusBadge.style.display = 'none';
         return;
     }
     
     const today = new Date();
     const expDate = new Date(expirationDate);
+    
+    // Проверяем, что дата валидна
+    if (isNaN(expDate.getTime())) {
+        console.log(`Некорректная дата для ${productName}: ${expirationDate}`);
+        statusBadge.style.display = 'none';
+        return;
+    }
+    
     const daysUntilExpiration = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
     
     // Обновляем статус на основе срока годности
@@ -1179,6 +1222,8 @@ function updateProductStatus(productName, expirationDate) {
         // Срок годности в порядке - не показываем статус
         statusBadge.style.display = 'none';
     }
+    
+    console.log(`Статус обновлен для ${productName}: ${daysUntilExpiration} дней до истечения`);
 }
 
 // Функция для плавной прокрутки к рецепту
