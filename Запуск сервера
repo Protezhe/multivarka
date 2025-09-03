@@ -3,3 +3,10 @@ cd /Users/evgeniy/PycharmProjects/multivarka && source venv/bin/activate && cd w
 scp /Users/evgeniy/PycharmProjects/multivarka/multivarka.db root@176.113.82.182:~/multivarka/
 
 ./start_server.sh
+
+cd multivarka
+git pull origin main
+
+ssh root@176.113.82.182
+
+6KzM8dgoUZ

@@ -291,9 +291,8 @@ def api_update_product(product):
             return jsonify({'error': 'Количество не может быть отрицательным'}), 400
         
         if db.update_product_quantity(product, quantity):
-            # Обновляем срок годности, если он указан
-            if expiration_date is not None:
-                db.update_product_expiration(product, expiration_date)
+            # Обновляем срок годности (включая null для очистки)
+            db.update_product_expiration(product, expiration_date)
             return jsonify({'success': True, 'message': f'Количество {product} обновлено'})
         else:
             return jsonify({'error': 'Продукт не найден'}), 404
@@ -707,4 +706,4 @@ def manage_recipes():
     return render_template('manage_recipes.html')
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=8080)
+    app.run(debug=True, host='0.0.0.0', port=8081)
