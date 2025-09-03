@@ -1,0 +1,1314 @@
+{% extends "base.html" %}
+
+{% block title %}Управление рецептами - Мультиварка{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1><i class="fas fa-book me-2"></i>Управление рецептами</h1>
+    <p>Просмотр, редактирование и удаление рецептов</p>
+</div>
+
+<!-- Панель управления -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="product-card">
+            <div class="product-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-utensils me-2"></i>Управление рецептами
+                    </h5>
+                    <button class="btn btn-success" onclick="addSingleMeal()">
+                        <i class="fas fa-plus me-2"></i>Добавить новый рецепт
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Статистика -->
+<div class="row mb-4" id="statsSection">
+    <div class="col-md-2">
+        <div class="stats-card clickable-stats" style="background: linear-gradient(45deg, #28a745, #20c997);" onclick="filterByMealType('завтрак')">
+            <div class="stats-number" id="breakfastCount">-</div>
+            <div class="stats-label">Завтрак</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="stats-card clickable-stats" style="background: linear-gradient(45deg, #17a2b8, #138496);" onclick="filterByMealType('второй_завтрак')">
+            <div class="stats-number" id="secondBreakfastCount">-</div>
+            <div class="stats-label">Второй завтрак</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="stats-card clickable-stats" style="background: linear-gradient(45deg, #ffc107, #fd7e14);" onclick="filterByMealType('обед')">
+            <div class="stats-number" id="lunchCount">-</div>
+            <div class="stats-label">Обед</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="stats-card clickable-stats" style="background: linear-gradient(45deg, #6f42c1, #e83e8c);" onclick="filterByMealType('полдник')">
+            <div class="stats-number" id="snackCount">-</div>
+            <div class="stats-label">Полдник</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="stats-card clickable-stats" style="background: linear-gradient(45deg, #dc3545, #e74c3c);" onclick="filterByMealType('ужин')">
+            <div class="stats-number" id="dinnerCount">-</div>
+            <div class="stats-label">Ужин</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="stats-card clickable-stats" style="background: linear-gradient(45deg, #667eea, #764ba2);" onclick="filterByMealType('')">
+            <div class="stats-number" id="totalRecipes">-</div>
+            <div class="stats-label">Все рецепты</div>
+        </div>
+    </div>
+</div>
+
+<!-- Список рецептов -->
+<div id="recipesContainer">
+    <div class="text-center">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Загрузка...</span>
+        </div>
+        <p class="mt-2">Загружаем рецепты...</p>
+    </div>
+</div>
+
+{% endblock %}
+
+<!-- Модальное окно для редактирования рецепта -->
+{% block modals %}
+<!-- Модальное окно для добавления нового рецепта -->
+<div class="modal fade" id="addMealModal" tabindex="-1" aria-labelledby="addMealModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addMealModalLabel">
+                    <i class="fas fa-plus me-2"></i>Добавить новый рецепт
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addMealForm">
+                    <!-- Тип приема пищи -->
+                    <div class="mb-3">
+                        <label for="mealType" class="form-label">Прием пищи *</label>
+                        <select class="form-select" id="mealType" required>
+                            <option value="">Выберите прием пищи</option>
+                            <option value="завтрак">Завтрак</option>
+                            <option value="второй_завтрак">Второй завтрак</option>
+                            <option value="обед">Обед</option>
+                            <option value="полдник">Полдник</option>
+                            <option value="ужин">Ужин</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Название блюда -->
+                    <div class="mb-3">
+                        <label for="dishName" class="form-label">Название блюда *</label>
+                        <input type="text" class="form-control" id="dishName" placeholder="Например: Творожная запеканка" required>
+                    </div>
+                    
+
+                    
+                    <!-- Готовое блюдо -->
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="isReady">
+                            <label class="form-check-label" for="isReady">
+                                Готовое блюдо (не требует приготовления)
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Ингредиенты -->
+                    <div class="mb-3">
+                        <label class="form-label">Ингредиенты *</label>
+                        <div id="ingredientsList">
+                            <!-- Динамически добавляемые ингредиенты -->
+                        </div>
+                        <div class="d-flex gap-2 mt-2">
+                            <button type="button" class="btn btn-primary btn-sm" onclick="addIngredientRow()">
+                                <i class="fas fa-plus me-1"></i>Добавить ингредиент
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Инструкции (опционально) -->
+                    <div class="mb-3">
+                        <label for="instructions" class="form-label">Инструкции (опционально)</label>
+                        <textarea class="form-control" id="instructions" rows="3" placeholder="Каждая инструкция с новой строки"></textarea>
+                        <div class="form-text">Введите каждую инструкцию с новой строки</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Отмена
+                </button>
+                <button type="button" class="btn btn-success" onclick="submitMeal()">
+                    <i class="fas fa-save me-2"></i>Сохранить рецепт
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для редактирования рецепта -->
+<div class="modal fade" id="editRecipeModal" tabindex="-1" aria-labelledby="editRecipeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editRecipeModalLabel">
+                    <i class="fas fa-edit me-2"></i>Редактировать рецепт
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editRecipeForm">
+                    <input type="hidden" id="editRecipeId">
+                    
+                    <!-- Название блюда -->
+                    <div class="mb-3">
+                        <label for="editDishName" class="form-label">Название блюда *</label>
+                        <input type="text" class="form-control" id="editDishName" required>
+                    </div>
+                    
+                    <!-- Тип приема пищи (только для информации) -->
+                    <div class="mb-3">
+                        <label for="editMealType" class="form-label">Тип приема пищи</label>
+                        <input type="text" class="form-control" id="editMealType" readonly style="background-color: #f8f9fa;">
+                        <div class="form-text">Тип приема пищи нельзя изменить. Создайте новый рецепт если нужен другой тип.</div>
+                    </div>
+                    
+
+                    
+                    <!-- Готовое блюдо -->
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="editIsReady">
+                            <label class="form-check-label" for="editIsReady">
+                                Готовое блюдо (не требует приготовления)
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Ингредиенты -->
+                    <div class="mb-3">
+                        <label class="form-label">Ингредиенты *</label>
+                        <div id="editIngredientsList">
+                            <!-- Динамически добавляемые ингредиенты -->
+                        </div>
+                        <div class="d-flex gap-2 mt-2">
+                            <button type="button" class="btn btn-primary btn-sm" onclick="addEditIngredientRow()">
+                                <i class="fas fa-plus me-1"></i>Добавить ингредиент
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Инструкции -->
+                    <div class="mb-3">
+                        <label for="editInstructions" class="form-label">Инструкции</label>
+                        <textarea class="form-control" id="editInstructions" rows="4" placeholder="Каждая инструкция с новой строки"></textarea>
+                        <div class="form-text">Введите каждую инструкцию с новой строки</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Отмена
+                </button>
+                <button type="button" class="btn btn-success" onclick="saveEditedRecipe()">
+                    <i class="fas fa-save me-2"></i>Сохранить изменения
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let editIngredientCounter = 0;
+let ingredientCounter = 0;
+let warehouseProducts = [];
+let allRecipes = [];
+
+// Загрузка продуктов со склада
+async function loadWarehouseProducts() {
+    try {
+        const response = await fetch('/api/products');
+        warehouseProducts = await response.json();
+        return warehouseProducts;
+    } catch (error) {
+        console.error('Ошибка загрузки продуктов:', error);
+        return [];
+    }
+}
+
+// Загрузка всех рецептов
+async function loadAllRecipes() {
+    try {
+        console.log('Загружаем рецепты...');
+        const response = await fetch('/api/recipes');
+        const data = await response.json();
+        
+        console.log('Ответ API:', data);
+        
+        if (data.success) {
+            allRecipes = data.recipes;
+            console.log('Рецептов загружено:', data.recipes.length);
+            updateStats(data.recipes);
+            displayRecipes(data.recipes);
+        } else {
+            throw new Error(data.error || 'Ошибка загрузки рецептов');
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки рецептов:', error);
+        document.getElementById('recipesContainer').innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-exclamation-triangle text-danger"></i>
+                <h3>Ошибка загрузки</h3>
+                <p>Не удалось загрузить рецепты: ${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+// Обновление статистики
+function updateStats(recipes) {
+    const stats = {
+        total: recipes.length,
+        завтрак: 0,
+        второй_завтрак: 0,
+        обед: 0,
+        полдник: 0,
+        ужин: 0
+    };
+    
+    recipes.forEach(recipe => {
+        if (recipe.тип_приема in stats) {
+            stats[recipe.тип_приема]++;
+        }
+    });
+    
+    document.getElementById('totalRecipes').textContent = stats.total;
+    document.getElementById('breakfastCount').textContent = stats.завтрак;
+    document.getElementById('secondBreakfastCount').textContent = stats.второй_завтрак;
+    document.getElementById('lunchCount').textContent = stats.обед;
+    document.getElementById('snackCount').textContent = stats.полдник;
+    document.getElementById('dinnerCount').textContent = stats.ужин;
+}
+
+// Отображение рецептов
+function displayRecipes(recipes) {
+    console.log('Отображаем рецепты:', recipes.length);
+    const container = document.getElementById('recipesContainer');
+    
+    if (!container) {
+        console.error('Контейнер recipesContainer не найден!');
+        return;
+    }
+    
+    if (recipes.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-utensils"></i>
+                <h3>Рецепты не найдены</h3>
+                <p>Попробуйте изменить параметры поиска</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const recipesHTML = recipes.map(recipe => {
+        const mealTypeIcons = {
+            'завтрак': 'sun',
+            'второй_завтрак': 'coffee',
+            'обед': 'utensils',
+            'полдник': 'cookie-bite',
+            'ужин': 'moon'
+        };
+        
+        const icon = mealTypeIcons[recipe.тип_приема] || 'utensils';
+        const readyBadge = recipe.готово ? '<span class="badge bg-success ms-2"><i class="fas fa-check"></i> Готово</span>' : '';
+
+        
+        return `
+            <div class="col-12 col-lg-6 mb-3">
+                <div class="product-card h-100">
+                    <div class="product-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-${icon} me-2"></i>${recipe.название}
+                            </h5>
+                            <div class="recipe-actions">
+                                <button class="btn btn-sm btn-outline-light me-1" 
+                                        onclick="editRecipe(${recipe.id})" 
+                                        title="Редактировать">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-light" 
+                                        onclick="deleteRecipe(${recipe.id}, '${recipe.название}')" 
+                                        title="Удалить">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="product-body">
+                        <div class="mb-2">
+                            <span class="badge bg-primary">${recipe.тип_приема}</span>
+                            ${readyBadge}
+                        </div>
+                        <div class="mb-2">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar me-1"></i>Создан: ${new Date(recipe.создан).toLocaleDateString('ru-RU')}
+                            </small>
+                        </div>
+                        <div class="mb-2">
+                            <small class="text-muted">
+                                <i class="fas fa-list me-1"></i>Ингредиентов: ${recipe.количество_ингредиентов}
+                            </small>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = `<div class="row">${recipesHTML}</div>`;
+}
+
+// Фильтрация рецептов по типу приема пищи
+function filterByMealType(mealType) {
+    if (!mealType) {
+        // Показываем все рецепты
+        displayRecipes(allRecipes);
+        updateStats(allRecipes);
+    } else {
+        // Фильтруем рецепты по типу
+        const filteredRecipes = allRecipes.filter(recipe => recipe.тип_приема === mealType);
+        displayRecipes(filteredRecipes);
+        
+        // Обновляем статистику для отображения только отфильтрованных рецептов
+        const stats = {
+            total: filteredRecipes.length,
+            завтрак: 0,
+            второй_завтрак: 0,
+            обед: 0,
+            полдник: 0,
+            ужин: 0
+        };
+        
+        filteredRecipes.forEach(recipe => {
+            if (recipe.тип_приема in stats) {
+                stats[recipe.тип_приема]++;
+            }
+        });
+        
+        document.getElementById('totalRecipes').textContent = stats.total;
+        document.getElementById('breakfastCount').textContent = stats.завтрак;
+        document.getElementById('secondBreakfastCount').textContent = stats.второй_завтрак;
+        document.getElementById('lunchCount').textContent = stats.обед;
+        document.getElementById('snackCount').textContent = stats.полдник;
+        document.getElementById('dinnerCount').textContent = stats.ужин;
+    }
+}
+
+// Редактирование рецепта
+async function editRecipe(recipeId) {
+    try {
+        // Загружаем данные рецепта
+        const response = await fetch(`/api/recipes/${recipeId}`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Рецепт не найден');
+        }
+        
+        const recipe = data.recipe;
+        
+        // Заполняем форму
+        document.getElementById('editRecipeId').value = recipe.id;
+        document.getElementById('editDishName').value = recipe.название;
+        document.getElementById('editMealType').value = recipe.тип_приема;
+
+        document.getElementById('editIsReady').checked = recipe.готово;
+        
+        // Заполняем ингредиенты
+        const ingredientsList = document.getElementById('editIngredientsList');
+        ingredientsList.innerHTML = '';
+        editIngredientCounter = 0;
+        
+        await loadWarehouseProducts();
+        
+        if (recipe.ингредиенты && recipe.ингредиенты.length > 0) {
+            recipe.ингредиенты.forEach(ingredient => {
+                addEditIngredientRow(ingredient);
+            });
+        } else {
+            addEditIngredientRow();
+        }
+        
+        // Заполняем инструкции
+        const instructions = recipe.инструкции ? recipe.инструкции.join('\n') : '';
+        document.getElementById('editInstructions').value = instructions;
+        
+        // Показываем модальное окно
+        const modal = new bootstrap.Modal(document.getElementById('editRecipeModal'));
+        modal.show();
+        
+    } catch (error) {
+        console.error('Ошибка загрузки рецепта:', error);
+        showNotification('Ошибка загрузки рецепта: ' + error.message, 'danger');
+    }
+}
+
+// Добавление строки ингредиента в форму редактирования
+function addEditIngredientRow(ingredient = null) {
+    editIngredientCounter++;
+    const ingredientsList = document.getElementById('editIngredientsList');
+    
+    const ingredientRow = document.createElement('div');
+    ingredientRow.className = 'ingredient-row mb-2';
+    ingredientRow.id = `edit-ingredient-${editIngredientCounter}`;
+    
+    ingredientRow.innerHTML = `
+        <div class="row g-2">
+            <div class="col-md-6">
+                <select class="form-select ingredient-product" required>
+                    <option value="">Выберите продукт</option>
+                </select>
+            </div>
+            <div class="col-md-4" id="edit-amount-col-${editIngredientCounter}">
+                <div class="input-group">
+                    <input type="number" 
+                           class="form-control ingredient-amount" 
+                           placeholder="Количество" 
+                           min="0" 
+                           step="0.1" 
+                           value="${ingredient ? ingredient.количество : ''}"
+                           required>
+                    <span class="input-group-text ingredient-unit-display">${ingredient ? ingredient.единица : '-'}</span>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button type="button" 
+                        class="btn btn-outline-danger btn-sm w-100" 
+                        onclick="removeEditIngredientRow(${editIngredientCounter})"
+                        title="Удалить ингредиент">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    
+    ingredientsList.appendChild(ingredientRow);
+    
+    // Заполняем список продуктов
+    const productSelect = ingredientRow.querySelector('.ingredient-product');
+    populateEditProductSelect(productSelect);
+    
+    // Добавляем обработчик для типа ингредиента
+    const typeSelect = ingredientRow.querySelector('.ingredient-type');
+    const amountCol = ingredientRow.querySelector(`#edit-amount-col-${editIngredientCounter}`);
+    const amountInput = ingredientRow.querySelector('.ingredient-amount');
+    
+    typeSelect.addEventListener('change', function() {
+        if (this.value === 'availability') {
+            amountCol.style.display = 'none';
+            amountInput.required = false;
+            amountInput.value = 1; // Для продуктов с наличием всегда 1
+        } else {
+            amountCol.style.display = 'block';
+            amountInput.required = true;
+        }
+    });
+    
+    // Устанавливаем значение если есть ингредиент
+    if (ingredient) {
+        productSelect.value = ingredient.продукт;
+        
+        // Устанавливаем правильный шаг для существующего ингредиента
+        updateAmountStep(amountInput, ingredient.единица);
+        
+        // Применяем логику отображения для типа ингредиента
+        if (ingredient.тип === 'availability') {
+            amountCol.style.display = 'none';
+            amountInput.required = false;
+            amountInput.value = 1;
+        } else {
+            amountCol.style.display = 'block';
+            amountInput.required = true;
+        }
+    }
+}
+
+// Удаление строки ингредиента в форме редактирования
+function removeEditIngredientRow(id) {
+    const row = document.getElementById(`edit-ingredient-${id}`);
+    if (row) {
+        row.remove();
+    }
+    
+    // Если не осталось ингредиентов, добавляем один
+    const remainingRows = document.querySelectorAll('#editIngredientsList .ingredient-row');
+    if (remainingRows.length === 0) {
+        addEditIngredientRow();
+    }
+}
+
+// Функция для обновления шага ввода количества в зависимости от единицы измерения
+function updateAmountStep(amountInput, unit) {
+    if (!amountInput) return;
+    
+    // Для штук устанавливаем шаг 1, для остальных - 0.1
+    if (unit === 'шт') {
+        amountInput.step = '1';
+    } else {
+        amountInput.step = '0.1';
+    }
+}
+
+// Заполнение списка продуктов в форме редактирования
+function populateEditProductSelect(productSelect) {
+    if (!productSelect) return;
+    
+    productSelect.innerHTML = '<option value="">Выберите продукт</option>';
+    
+    warehouseProducts.forEach(product => {
+        const option = document.createElement('option');
+        option.value = product.name;
+        option.textContent = `${product.name} (${product.unit})`;
+        option.dataset.unit = product.unit;
+        option.dataset.type = product.type || 'quantity';
+        productSelect.appendChild(option);
+    });
+    
+    // Добавляем опцию для создания нового продукта
+    const newProductOption = document.createElement('option');
+    newProductOption.value = '__ADD_NEW_PRODUCT__';
+    newProductOption.textContent = '➕ Добавить новый продукт...';
+    newProductOption.style.color = '#28a745';
+    newProductOption.style.fontWeight = 'bold';
+    productSelect.appendChild(newProductOption);
+    
+    // Обработчик изменения
+    const unitDisplay = productSelect.closest('.ingredient-row').querySelector('.ingredient-unit-display');
+    const amountInput = productSelect.closest('.ingredient-row').querySelector('.ingredient-amount');
+    const amountCol = productSelect.closest('.ingredient-row').querySelector('[id^="edit-amount-col-"]');
+    productSelect.onchange = async function() {
+        if (this.value === '__ADD_NEW_PRODUCT__') {
+            // Обрабатываем создание нового продукта
+            await handleNewProductCreationForEdit(this);
+        } else {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption && selectedOption.dataset.unit) {
+                unitDisplay.textContent = selectedOption.dataset.unit;
+                // Устанавливаем правильный шаг в зависимости от единицы измерения
+                updateAmountStep(amountInput, selectedOption.dataset.unit);
+                
+                // Проверяем тип продукта
+                const productType = selectedOption.dataset.type || 'quantity';
+                if (productType === 'availability') {
+                    amountCol.style.display = 'none';
+                    amountInput.required = false;
+                    amountInput.value = 1; // Для продуктов с наличием всегда 1
+                } else {
+                    amountCol.style.display = 'block';
+                    amountInput.required = true;
+                }
+            } else {
+                unitDisplay.textContent = '-';
+                amountInput.step = '0.1'; // По умолчанию
+                amountCol.style.display = 'block';
+                amountInput.required = true;
+            }
+        }
+    };
+}
+
+// Обработка создания нового продукта из выпадающего списка в форме редактирования
+async function handleNewProductCreationForEdit(selectElement) {
+    const productName = prompt('Введите название нового продукта:', '');
+    if (!productName || !productName.trim()) {
+        selectElement.value = ''; // Сбрасываем выбор
+        return;
+    }
+    
+    const units = ['шт', 'кг', 'г', 'л', 'мл', 'пакетик', 'ч.л.', 'ст.л.', 'кубик', 'банка', 'упаковка', 'есть/нет'];
+    const unitChoice = prompt(`Выберите единицу измерения для "${productName.trim()}":\n\n${units.map((u, i) => `${i+1}. ${u}`).join('\n')}\n\nВведите номер (1-${units.length}) или название единицы:`, '1');
+    
+    let selectedUnit;
+    if (!isNaN(unitChoice) && unitChoice >= 1 && unitChoice <= units.length) {
+        selectedUnit = units[parseInt(unitChoice) - 1];
+    } else if (units.includes(unitChoice.trim())) {
+        selectedUnit = unitChoice.trim();
+    } else {
+        alert('Некорректная единица измерения');
+        selectElement.value = ''; // Сбрасываем выбор
+        return;
+    }
+    
+    // Определяем тип продукта автоматически на основе единицы измерения
+    let productType = 'quantity';
+    if (selectedUnit === 'есть/нет') {
+        productType = 'availability';
+    } else {
+        // Спрашиваем тип продукта только для количественных единиц
+        const productTypeChoice = prompt(`Выберите тип продукта для "${productName.trim()}":\n\n1. Количественный (с указанием количества)\n2. Простое наличие (есть/нет)\n\nВведите номер (1 или 2):`, '1');
+        
+        if (productTypeChoice === '2') {
+            productType = 'availability';
+        } else if (productTypeChoice !== '1') {
+            alert('Некорректный выбор типа продукта');
+            selectElement.value = ''; // Сбрасываем выбор
+            return;
+        }
+    }
+    
+    try {
+        // Сохраняем новый продукт в базу данных
+        const response = await fetch('/api/create_new_product', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                product: productName.trim(),
+                unit: selectedUnit,
+                product_type: productType
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Добавляем новый продукт в локальный список
+            warehouseProducts.push(result.product);
+            
+            // Обновляем все выпадающие списки в форме редактирования
+            document.querySelectorAll('#editIngredientsList .ingredient-product').forEach(select => {
+                const currentValue = select.value; // Сохраняем текущий выбор
+                populateEditProductSelect(select);
+                
+                // Если это тот же select, где создавали продукт - выбираем новый продукт
+                if (select === selectElement) {
+                    select.value = productName.trim();
+                    // Устанавливаем единицу измерения
+                    const unitDisplay = select.closest('.ingredient-row').querySelector('.ingredient-unit-display');
+                    const amountInput = select.closest('.ingredient-row').querySelector('.ingredient-amount');
+                    const amountCol = select.closest('.ingredient-row').querySelector('[id^="amount-col-"]');
+                    unitDisplay.textContent = selectedUnit;
+                    // Устанавливаем правильный шаг
+                    updateAmountStep(amountInput, selectedUnit);
+                    
+                    // Применяем логику отображения для типа продукта
+                    if (productType === 'availability') {
+                        amountCol.style.display = 'none';
+                        amountInput.required = false;
+                        amountInput.value = 1;
+                    } else {
+                        amountCol.style.display = 'block';
+                        amountInput.required = true;
+                    }
+                } else if (currentValue && currentValue !== '__ADD_NEW_PRODUCT__') {
+                    select.value = currentValue; // Восстанавливаем выбор в других списках
+                }
+            });
+            
+            // Показываем уведомление об успешном добавлении
+            showNotification(result.message, 'success');
+        } else {
+            alert(result.error || 'Ошибка при создании продукта');
+            selectElement.value = ''; // Сбрасываем выбор
+        }
+    } catch (error) {
+        console.error('Ошибка при создании продукта:', error);
+        alert('Ошибка при создании продукта');
+        selectElement.value = ''; // Сбрасываем выбор
+    }
+}
+
+// Сохранение отредактированного рецепта
+async function saveEditedRecipe() {
+    const recipeId = document.getElementById('editRecipeId').value;
+    const dishName = document.getElementById('editDishName').value.trim();
+
+    const isReady = document.getElementById('editIsReady').checked;
+    const instructions = document.getElementById('editInstructions').value.trim();
+    
+    // Валидация
+    if (!dishName) {
+        alert('Пожалуйста, введите название блюда');
+        return;
+    }
+    
+    // Собираем ингредиенты
+    const ingredients = [];
+    const ingredientRows = document.querySelectorAll('#editIngredientsList .ingredient-row');
+    
+    for (let row of ingredientRows) {
+        const product = row.querySelector('.ingredient-product').value.trim();
+        const amount = parseFloat(row.querySelector('.ingredient-amount').value);
+        const unit = row.querySelector('.ingredient-unit-display').textContent.trim();
+        
+        if (!product || !unit || unit === '-') {
+            alert('Проверьте корректность всех ингредиентов');
+            return;
+        }
+        
+        // Определяем тип продукта из выбранного продукта
+        const productSelect = row.querySelector('.ingredient-product');
+        const selectedOption = productSelect.options[productSelect.selectedIndex];
+        const productType = selectedOption ? selectedOption.dataset.type || 'quantity' : 'quantity';
+        
+        // Проверяем количество только для количественных продуктов
+        if (productType === 'quantity' && (isNaN(amount) || amount < 0)) {
+            alert('Проверьте корректность количества для количественных ингредиентов');
+            return;
+        }
+        
+        ingredients.push({
+            продукт: product,
+            количество: productType === 'availability' ? 1 : amount,
+            единица: unit,
+            тип: productType
+        });
+    }
+    
+    if (ingredients.length === 0) {
+        alert('Добавьте хотя бы один ингредиент');
+        return;
+    }
+    
+    // Формируем данные
+    const mealData = {
+        блюдо: dishName,
+        ингредиенты: ingredients
+    };
+    
+
+    
+    if (isReady) {
+        mealData.готово = true;
+    }
+    
+    if (instructions) {
+        const instructionsList = instructions.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
+        if (instructionsList.length > 0) {
+            mealData.инструкции = instructionsList;
+        }
+    }
+    
+    try {
+        const response = await fetch(`/api/recipes/${recipeId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                meal_data: mealData
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Закрываем модальное окно
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editRecipeModal'));
+            if (modal) modal.hide();
+            
+            showNotification(result.message, 'success');
+            
+            // Перезагружаем список рецептов
+            await loadAllRecipes();
+        } else {
+            alert(result.error || 'Ошибка при сохранении');
+        }
+    } catch (error) {
+        console.error('Ошибка сохранения:', error);
+        alert('Ошибка при сохранении рецепта');
+    }
+}
+
+// Удаление рецепта
+async function deleteRecipe(recipeId, recipeName) {
+    if (!confirm(`Вы уверены, что хотите удалить рецепт "${recipeName}"?\n\nЭто действие нельзя отменить.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/recipes/${recipeId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification(result.message, 'success');
+            await loadAllRecipes();
+        } else {
+            alert(result.error || 'Ошибка при удалении');
+        }
+    } catch (error) {
+        console.error('Ошибка удаления:', error);
+        alert('Ошибка при удалении рецепта');
+    }
+}
+
+// Показ уведомлений
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    
+    const icons = {
+        success: 'check-circle',
+        danger: 'exclamation-triangle',
+        warning: 'exclamation-circle',
+        info: 'info-circle'
+    };
+    
+    notification.innerHTML = `
+        <i class="fas fa-${icons[type] || 'info-circle'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 4000);
+}
+
+// Инициализация страницы
+document.addEventListener('DOMContentLoaded', async function() {
+    await loadWarehouseProducts();
+    await loadAllRecipes();
+});
+
+// === ФУНКЦИИ ДЛЯ ДОБАВЛЕНИЯ НОВЫХ РЕЦЕПТОВ ===
+
+// Открытие модального окна для добавления рецепта
+async function addSingleMeal() {
+    try {
+        // Загружаем продукты со склада
+        await loadWarehouseProducts();
+        
+        // Проверяем, что модальное окно существует
+        const modalElement = document.getElementById('addMealModal');
+        if (!modalElement) {
+            console.error('Модальное окно не найдено');
+            alert('Ошибка: модальное окно не найдено');
+            return;
+        }
+        
+        // Сбрасываем форму
+        const form = document.getElementById('addMealForm');
+        if (form) {
+            form.reset();
+        }
+        
+        const ingredientsList = document.getElementById('ingredientsList');
+        if (ingredientsList) {
+            ingredientsList.innerHTML = '';
+        }
+        
+        ingredientCounter = 0;
+        
+        // Добавляем первый ингредиент
+        addIngredientRow();
+        
+        // Обработчики для типа приема пищи (если нужны в будущем)
+        const mealTypeSelect = document.getElementById('mealType');
+        if (mealTypeSelect) {
+            // Здесь можно добавить обработчики для типа приема пищи
+        }
+        
+        // Показываем модальное окно
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+    } catch (error) {
+        console.error('Ошибка при открытии модального окна:', error);
+        alert('Ошибка при открытии формы добавления рецепта');
+    }
+}
+
+
+
+// Добавление строки ингредиента для нового рецепта
+function addIngredientRow() {
+    try {
+        ingredientCounter++;
+        const ingredientsList = document.getElementById('ingredientsList');
+        
+        if (!ingredientsList) {
+            console.error('Контейнер ингредиентов не найден');
+            return;
+        }
+        
+        const ingredientRow = document.createElement('div');
+        ingredientRow.className = 'ingredient-row mb-2';
+        ingredientRow.id = `ingredient-${ingredientCounter}`;
+        
+        ingredientRow.innerHTML = `
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <select class="form-select ingredient-product" required>
+                        <option value="">Выберите продукт</option>
+                    </select>
+                </div>
+                <div class="col-md-4" id="amount-col-${ingredientCounter}">
+                    <div class="input-group">
+                        <input type="number" 
+                               class="form-control ingredient-amount" 
+                               placeholder="Количество" 
+                               min="0" 
+                               step="0.1" 
+                               required>
+                        <span class="input-group-text ingredient-unit-display">-</span>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button type="button" 
+                            class="btn btn-outline-danger btn-sm w-100" 
+                            onclick="removeIngredientRow(${ingredientCounter})"
+                            title="Удалить ингредиент">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        ingredientsList.appendChild(ingredientRow);
+        
+        // Заполняем выпадающий список продуктами со склада
+        populateProductSelect(ingredientRow.querySelector('.ingredient-product'));
+        
+    } catch (error) {
+        console.error('Ошибка при добавлении ингредиента:', error);
+    }
+}
+
+// Удаление строки ингредиента для нового рецепта
+function removeIngredientRow(id) {
+    const row = document.getElementById(`ingredient-${id}`);
+    if (row) {
+        row.remove();
+    }
+    
+    // Если не осталось ингредиентов, добавляем один
+    const remainingRows = document.querySelectorAll('#ingredientsList .ingredient-row');
+    if (remainingRows.length === 0) {
+        addIngredientRow();
+    }
+}
+
+// Заполнение выпадающего списка продуктами со склада для нового рецепта
+function populateProductSelect(productSelect) {
+    if (!productSelect) return;
+    
+    // Очищаем список
+    productSelect.innerHTML = '<option value="">Выберите продукт</option>';
+    
+    // Добавляем продукты со склада
+    warehouseProducts.forEach(product => {
+        const option = document.createElement('option');
+        option.value = product.name;
+        option.textContent = `${product.name} (${product.unit}, есть: ${product.quantity})`;
+        option.dataset.unit = product.unit;
+        option.dataset.type = product.type || 'quantity';
+        productSelect.appendChild(option);
+    });
+    
+    // Добавляем опцию для создания нового продукта
+    const newProductOption = document.createElement('option');
+    newProductOption.value = '__ADD_NEW_PRODUCT__';
+    newProductOption.textContent = '➕ Добавить новый продукт...';
+    newProductOption.style.color = '#28a745';
+    newProductOption.style.fontWeight = 'bold';
+    productSelect.appendChild(newProductOption);
+    
+    // Добавляем обработчик изменения
+    const unitDisplay = productSelect.closest('.ingredient-row').querySelector('.ingredient-unit-display');
+    const amountInput = productSelect.closest('.ingredient-row').querySelector('.ingredient-amount');
+    const amountCol = productSelect.closest('.ingredient-row').querySelector('[id^="amount-col-"]');
+    productSelect.onchange = async function() {
+        if (this.value === '__ADD_NEW_PRODUCT__') {
+            // Обрабатываем создание нового продукта
+            await handleNewProductCreation(this);
+        } else {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption && selectedOption.dataset.unit) {
+                unitDisplay.textContent = selectedOption.dataset.unit;
+                // Устанавливаем правильный шаг в зависимости от единицы измерения
+                updateAmountStep(amountInput, selectedOption.dataset.unit);
+                
+                // Проверяем тип продукта
+                const productType = selectedOption.dataset.type || 'quantity';
+                if (productType === 'availability') {
+                    amountCol.style.display = 'none';
+                    amountInput.required = false;
+                    amountInput.value = 1; // Для продуктов с наличием всегда 1
+                } else {
+                    amountCol.style.display = 'block';
+                    amountInput.required = true;
+                }
+            } else {
+                unitDisplay.textContent = '-';
+                amountInput.step = '0.1'; // По умолчанию
+                amountCol.style.display = 'block';
+                amountInput.required = true;
+            }
+        }
+    };
+}
+
+// Обработка создания нового продукта из выпадающего списка для нового рецепта
+async function handleNewProductCreation(selectElement) {
+    const productName = prompt('Введите название нового продукта:', '');
+    if (!productName || !productName.trim()) {
+        selectElement.value = ''; // Сбрасываем выбор
+        return;
+    }
+    
+    const units = ['шт', 'кг', 'г', 'л', 'мл', 'пакетик', 'ч.л.', 'ст.л.', 'кубик', 'банка', 'упаковка', 'есть/нет'];
+    const unitChoice = prompt(`Выберите единицу измерения для "${productName.trim()}":\n\n${units.map((u, i) => `${i+1}. ${u}`).join('\n')}\n\nВведите номер (1-${units.length}) или название единицы:`, '1');
+    
+    let selectedUnit;
+    if (!isNaN(unitChoice) && unitChoice >= 1 && unitChoice <= units.length) {
+        selectedUnit = units[parseInt(unitChoice) - 1];
+    } else if (units.includes(unitChoice.trim())) {
+        selectedUnit = unitChoice.trim();
+    } else {
+        alert('Некорректная единица измерения');
+        selectElement.value = ''; // Сбрасываем выбор
+        return;
+    }
+    
+    // Определяем тип продукта автоматически на основе единицы измерения
+    let productType = 'quantity';
+    if (selectedUnit === 'есть/нет') {
+        productType = 'availability';
+    } else {
+        // Спрашиваем тип продукта только для количественных единиц
+        const productTypeChoice = prompt(`Выберите тип продукта для "${productName.trim()}":\n\n1. Количественный (с указанием количества)\n2. Простое наличие (есть/нет)\n\nВведите номер (1 или 2):`, '1');
+        
+        if (productTypeChoice === '2') {
+            productType = 'availability';
+        } else if (productTypeChoice !== '1') {
+            alert('Некорректный выбор типа продукта');
+            selectElement.value = ''; // Сбрасываем выбор
+            return;
+        }
+    }
+    
+    try {
+        // Сохраняем новый продукт в базу данных
+        const response = await fetch('/api/create_new_product', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                product: productName.trim(),
+                unit: selectedUnit,
+                product_type: productType
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Добавляем новый продукт в локальный список
+            warehouseProducts.push(result.product);
+            
+            // Обновляем все выпадающие списки в форме добавления рецепта
+            document.querySelectorAll('#ingredientsList .ingredient-product').forEach(select => {
+                const currentValue = select.value; // Сохраняем текущий выбор
+                populateProductSelect(select);
+                
+                // Если это тот же select, где создавали продукт - выбираем новый продукт
+                if (select === selectElement) {
+                    select.value = productName.trim();
+                    // Устанавливаем единицу измерения
+                    const unitDisplay = select.closest('.ingredient-row').querySelector('.ingredient-unit-display');
+                    const amountInput = select.closest('.ingredient-row').querySelector('.ingredient-amount');
+                    const amountCol = select.closest('.ingredient-row').querySelector('[id^="amount-col-"]');
+                    unitDisplay.textContent = selectedUnit;
+                    // Устанавливаем правильный шаг
+                    updateAmountStep(amountInput, selectedUnit);
+                    
+                    // Применяем логику отображения для типа продукта
+                    if (productType === 'availability') {
+                        amountCol.style.display = 'none';
+                        amountInput.required = false;
+                        amountInput.value = 1;
+                    } else {
+                        amountCol.style.display = 'block';
+                        amountInput.required = true;
+                    }
+                } else if (currentValue && currentValue !== '__ADD_NEW_PRODUCT__') {
+                    select.value = currentValue; // Восстанавливаем выбор в других списках
+                }
+            });
+            
+            // Показываем уведомление об успешном добавлении
+            showNotification(result.message, 'success');
+        } else {
+            alert(result.error || 'Ошибка при создании продукта');
+            selectElement.value = ''; // Сбрасываем выбор
+        }
+    } catch (error) {
+        console.error('Ошибка при создании продукта:', error);
+        alert('Ошибка при создании продукта');
+        selectElement.value = ''; // Сбрасываем выбор
+    }
+}
+
+// Отправка формы нового рецепта
+function submitMeal() {
+    const form = document.getElementById('addMealForm');
+    const mealType = document.getElementById('mealType').value.trim();
+    const dishName = document.getElementById('dishName').value.trim();
+
+    const isReady = document.getElementById('isReady').checked;
+    const instructions = document.getElementById('instructions').value.trim();
+    
+    // Валидация основных полей
+    if (!mealType) {
+        alert('Пожалуйста, выберите прием пищи');
+        return;
+    }
+    
+    if (!dishName) {
+        alert('Пожалуйста, введите название блюда');
+        return;
+    }
+    
+    // Собираем ингредиенты
+    const ingredients = [];
+    const ingredientRows = document.querySelectorAll('#ingredientsList .ingredient-row');
+    
+    for (let row of ingredientRows) {
+        const product = row.querySelector('.ingredient-product').value.trim();
+        const amount = parseFloat(row.querySelector('.ingredient-amount').value);
+        const unit = row.querySelector('.ingredient-unit-display').textContent.trim();
+        
+        if (!product) {
+            alert('Пожалуйста, выберите продукт');
+            return;
+        }
+        
+        if (!unit || unit === '-') {
+            alert('Пожалуйста, выберите продукт со склада');
+            return;
+        }
+        
+        // Определяем тип продукта из выбранного продукта
+        const productSelect = row.querySelector('.ingredient-product');
+        const selectedOption = productSelect.options[productSelect.selectedIndex];
+        const productType = selectedOption ? selectedOption.dataset.type || 'quantity' : 'quantity';
+        
+        // Проверяем количество только для количественных продуктов
+        if (productType === 'quantity' && (isNaN(amount) || amount < 0)) {
+            alert('Пожалуйста, введите корректное количество (неотрицательное число)');
+            return;
+        }
+        
+        const ingredient = {
+            продукт: product,
+            количество: productType === 'availability' ? 1 : amount,
+            единица: unit,
+            тип: productType
+        };
+        
+        ingredients.push(ingredient);
+    }
+    
+    if (ingredients.length === 0) {
+        alert('Добавьте хотя бы один ингредиент');
+        return;
+    }
+    
+    // Формируем данные блюда
+    const mealData = {
+        блюдо: dishName,
+        ингредиенты: ingredients
+    };
+    
+
+    
+    if (isReady) {
+        mealData.готово = true;
+    }
+    
+    if (instructions) {
+        const instructionsList = instructions.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
+        if (instructionsList.length > 0) {
+            mealData.инструкции = instructionsList;
+        }
+    }
+    
+    // Отправляем запрос
+    fetch('/api/add_single_meal', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            meal_type: mealType,
+            meal_data: mealData
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Закрываем модальное окно
+            try {
+                const modalElement = document.getElementById('addMealModal');
+                if (modalElement) {
+                    const modal = bootstrap.Modal.getInstance(modalElement);
+                    if (modal) {
+                        modal.hide();
+                    } else {
+                        // Если экземпляр не найден, создаем новый и закрываем
+                        const newModal = new bootstrap.Modal(modalElement);
+                        newModal.hide();
+                    }
+                }
+            } catch (modalError) {
+                console.error('Ошибка при закрытии модального окна:', modalError);
+            }
+            
+            // Показываем уведомление
+            showNotification(data.message, 'success');
+            
+            // Перезагружаем список рецептов
+            setTimeout(async () => {
+                await loadAllRecipes();
+            }, 500);
+        } else {
+            alert(data.error || 'Ошибка при добавлении рецепта');
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка запроса:', error);
+        alert('Ошибка при отправке данных');
+    });
+}
+
+</script>
+{% endblock %}

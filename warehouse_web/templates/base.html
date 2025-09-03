@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{% block title %}Мультиварка{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            /* Предотвращаем горизонтальную прокрутку */
+            overflow-x: hidden;
+        }
+        
+        .container-fluid {
+            display: flex;
+            justify-content: center;
+            padding: 0;
+        }
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            margin: 20px auto;
+            padding: 30px;
+            max-width: 1200px;
+            width: calc(100% - 40px);
+            box-sizing: border-box;
+        }
+        
+        /* Отключаем backdrop-filter в мобильной версии */
+        @media (max-width: 768px) {
+            .main-container {
+                backdrop-filter: none;
+            }
+        }
+        
+        /* Мобильные стили для основного контейнера */
+        @media (max-width: 768px) {
+            .main-container {
+                width: calc(100% - 20px);
+                margin: 5px auto;
+                padding: 10px 8px;
+                /* Убираем тень и закругления в мобильной версии */
+                box-shadow: none;
+                border-radius: 0;
+                background: white;
+            }
+            
+            /* Убираем синий фон в мобильной версии */
+            body {
+                background: white !important;
+            }
+            
+            /* Предотвращаем масштабирование при появлении клавиатуры */
+            input[type="number"], 
+            input[type="text"], 
+            input[type="email"], 
+            textarea, 
+            select {
+                font-size: 16px !important;
+                transform: translateZ(0);
+                -webkit-transform: translateZ(0);
+            }
+            
+            /* Фиксируем viewport при фокусе на input */
+            input:focus, 
+            textarea:focus, 
+            select:focus {
+                transform: translateZ(0);
+                -webkit-transform: translateZ(0);
+            }
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .header h1 {
+            color: #495057;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #6c757d;
+            font-size: 1.1em;
+        }
+        .product-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            border: 1px solid #e9ecef;
+            margin-bottom: 20px;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+        .product-header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 15px 15px 0 0;
+            font-weight: 600;
+        }
+        .product-body {
+            padding: 20px;
+        }
+        .info-display {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #495057;
+            text-align: center;
+            margin: 8px 0;
+            padding: 8px 12px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        .info-display-secondary {
+            color: #6c757d;
+            text-align: center;
+            font-size: 1em;
+            margin: 4px 0;
+            padding: 4px 8px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        .btn-custom {
+            border-radius: 25px;
+            padding: 10px 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+        }
+        .btn-edit {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+        }
+        .btn-edit:hover {
+            background: linear-gradient(45deg, #218838, #1ea085);
+            color: white;
+            transform: scale(1.05);
+        }
+        .btn-delete {
+            background: linear-gradient(45deg, #dc3545, #e74c3c);
+            color: white;
+        }
+        .btn-delete:hover {
+            background: linear-gradient(45deg, #c82333, #c0392b);
+            color: white;
+            transform: scale(1.05);
+        }
+        .btn-add {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            font-size: 1.1em;
+            padding: 15px 30px;
+        }
+        .btn-add:hover {
+            background: linear-gradient(45deg, #0056b3, #004085);
+            color: white;
+            transform: scale(1.05);
+        }
+        
+
+        
+        .meal-card {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid #dee2e6;
+            transition: all 0.3s ease;
+        }
+        
+        .meal-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+        }
+        
+        .meal-card:active {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+        
+        .meal-title {
+            color: #495057;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .meal-dish {
+            color: #6c757d;
+            font-style: italic;
+            margin-bottom: 0;
+        }
+        
+        /* Стили для неактивных карточек (не готовить) */
+        .meal-card-skipped {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef) !important;
+            opacity: 0.6;
+            border: 2px solid #6c757d !important;
+        }
+        
+        .meal-card-skipped:hover {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef) !important;
+            transform: none !important;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08) !important;
+        }
+        
+        .meal-card-skipped .meal-title {
+            color: #6c757d !important;
+            text-decoration: line-through;
+        }
+        
+        .meal-card-skipped .meal-dish {
+            color: #adb5bd !important;
+            text-decoration: line-through;
+        }
+        
+        /* Цветовая схема для карточек по типам приемов пищи */
+        .meal-card.завтрак {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border: 2px solid #f39c12;
+        }
+        
+        .meal-card.завтрак:hover {
+            background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(243, 156, 18, 0.2);
+        }
+        
+        .meal-card.второй_завтрак {
+            background: linear-gradient(135deg, #d1f2eb, #a8e6cf);
+            border: 2px solid #00b894;
+        }
+        
+        .meal-card.второй_завтрак:hover {
+            background: linear-gradient(135deg, #a8e6cf, #81ecec);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 184, 148, 0.2);
+        }
+        
+        .meal-card.обед {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            border: 2px solid #e91e63;
+        }
+        
+        .meal-card.обед:hover {
+            background: linear-gradient(135deg, #ffcdd2, #f8bbd9);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(233, 30, 99, 0.2);
+        }
+        
+        .meal-card.полдник {
+            background: linear-gradient(135deg, #fce4ec, #f8bbd9);
+            border: 2px solid #f06292;
+        }
+        
+        .meal-card.полдник:hover {
+            background: linear-gradient(135deg, #f8bbd9, #f48fb1);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(240, 98, 146, 0.2);
+        }
+        
+        .meal-card.ужин {
+            background: linear-gradient(135deg, #e3f2fd, #b3e5fc);
+            border: 2px solid #0984e3;
+        }
+        
+        .meal-card.ужин:hover {
+            background: linear-gradient(135deg, #b3e5fc, #81d4fa);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(9, 132, 227, 0.2);
+        }
+        
+        /* Стили для неактивных карточек с сохранением цветовой схемы */
+        .meal-card-skipped.завтрак {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7) !important;
+            border: 2px solid #f39c12 !important;
+        }
+        
+        .meal-card-skipped.второй_завтрак {
+            background: linear-gradient(135deg, #d1f2eb, #a8e6cf) !important;
+            border: 2px solid #00b894 !important;
+        }
+        
+        .meal-card-skipped.обед {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2) !important;
+            border: 2px solid #e91e63 !important;
+        }
+        
+        .meal-card-skipped.полдник {
+            background: linear-gradient(135deg, #fce4ec, #f8bbd9) !important;
+            border: 2px solid #f06292 !important;
+        }
+        
+        .meal-card-skipped.ужин {
+            background: linear-gradient(135deg, #e3f2fd, #b3e5fc) !important;
+            border: 2px solid #0984e3 !important;
+        }
+        
+        /* Цветовая схема для больших карточек рецептов */
+        .large-recipe-card.завтрак .product-header {
+            background: linear-gradient(45deg, #f39c12, #e67e22) !important;
+        }
+        
+        .large-recipe-card.второй_завтрак .product-header {
+            background: linear-gradient(45deg, #00b894, #00a085) !important;
+        }
+        
+        .large-recipe-card.обед .product-header {
+            background: linear-gradient(45deg, #e91e63, #c2185b) !important;
+        }
+        
+        .large-recipe-card.полдник .product-header {
+            background: linear-gradient(45deg, #f06292, #e91e63) !important;
+        }
+        
+        .large-recipe-card.ужин .product-header {
+            background: linear-gradient(45deg, #0984e3, #0770c2) !important;
+        }
+        
+        /* Цветовая схема для готовых блюд */
+        .ready-meal.завтрак {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7) !important;
+            border: 2px solid #f39c12 !important;
+        }
+        
+        .ready-meal.завтрак .product-header {
+            background: linear-gradient(45deg, #f39c12, #e67e22) !important;
+        }
+        
+        .ready-meal.второй_завтрак {
+            background: linear-gradient(135deg, #d1f2eb, #a8e6cf) !important;
+            border: 2px solid #00b894 !important;
+        }
+        
+        .ready-meal.второй_завтрак .product-header {
+            background: linear-gradient(45deg, #00b894, #00a085) !important;
+        }
+        
+        .ready-meal.обед {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2) !important;
+            border: 2px solid #e91e63 !important;
+        }
+        
+        .ready-meal.обед .product-header {
+            background: linear-gradient(45deg, #e91e63, #c2185b) !important;
+        }
+        
+        .ready-meal.полдник {
+            background: linear-gradient(135deg, #fce4ec, #f8bbd9) !important;
+            border: 2px solid #f06292 !important;
+        }
+        
+        .ready-meal.полдник .product-header {
+            background: linear-gradient(45deg, #f06292, #e91e63) !important;
+        }
+        
+        .ready-meal.ужин {
+            background: linear-gradient(135deg, #e3f2fd, #b3e5fc) !important;
+            border: 2px solid #0984e3 !important;
+        }
+        
+        .ready-meal.ужин .product-header {
+            background: linear-gradient(45deg, #0984e3, #0770c2) !important;
+        }
+        
+        /* Стили для списка склада */
+        .warehouse-list {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e9ecef;
+            overflow: hidden;
+        }
+        
+        .warehouse-header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 20px;
+            font-weight: 600;
+        }
+        
+        .warehouse-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f8f9fa;
+            transition: background-color 0.2s ease;
+        }
+        
+        .warehouse-item:last-child {
+            border-bottom: none;
+        }
+        
+        .warehouse-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .product-name {
+            font-weight: 600;
+            color: #495057;
+            display: flex;
+            align-items: center;
+        }
+        
+        .warehouse-item .input-group-sm .form-control {
+            font-size: 0.875rem;
+            padding: 0.375rem 0.75rem;
+        }
+        
+        .warehouse-item .input-group-sm .input-group-text {
+            font-size: 0.875rem;
+            padding: 0.375rem 0.75rem;
+        }
+        
+        /* Мобильные стили для списка склада */
+        @media (max-width: 768px) {
+            .warehouse-header {
+                padding: 12px 15px;
+            }
+            
+            .warehouse-header h6 {
+                font-size: 0.9rem;
+            }
+            
+            .warehouse-item {
+                padding: 12px 15px;
+            }
+            
+            .warehouse-item .row > div {
+                margin-bottom: 10px;
+            }
+            
+            .warehouse-item .row > div:last-child {
+                margin-bottom: 0;
+            }
+            
+            .product-name {
+                font-size: 0.9rem;
+            }
+        }
+        
+        /* Стили для кнопок "не готовить" */
+        .btn-outline-warning {
+            color: #8B4513 !important;
+            border-color: #8B4513 !important;
+        }
+        
+        .btn-outline-warning:hover {
+            color: white !important;
+            background-color: #8B4513 !important;
+            border-color: #8B4513 !important;
+        }
+        
+        .btn-outline-success {
+            color: #8B4513 !important;
+            border-color: #8B4513 !important;
+        }
+        
+        .btn-outline-success:hover {
+            color: white !important;
+            background-color: #8B4513 !important;
+            border-color: #8B4513 !important;
+        }
+        
+
+        
+
+        
+        .meal-name {
+            color: #495057;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .ingredients-list {
+            margin-bottom: 15px;
+        }
+        
+        .ingredients-list h6 {
+            color: #495057;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .ingredients-list ul li {
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+        
+        .ingredients-list ul li i {
+            color: #28a745;
+            font-size: 0.8em;
+        }
+        
+        .instructions-list {
+            margin-bottom: 15px;
+        }
+        
+        .instructions-list h6 {
+            color: #495057;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .instructions-list ol {
+            color: #6c757d;
+            padding-left: 20px;
+        }
+        
+        .instructions-list ol li {
+            margin-bottom: 8px;
+        }
+        
+        /* Стили для больших карточек рецептов */
+        .large-recipe-card {
+            margin-bottom: 30px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        }
+        
+        .large-recipe-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+        }
+        
+        .large-recipe-card .product-header {
+            padding: 25px 30px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+        }
+        
+        .large-recipe-card .product-header h4 {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+        
+        .large-recipe-card .product-body {
+            padding: 30px;
+        }
+        
+        .large-recipe-card .ingredients-list h5,
+        .large-recipe-card .instructions-list h5 {
+            color: #495057;
+            font-weight: 700;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+        }
+        
+        .large-recipe-card .ingredients-list ul li {
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid #f8f9fa;
+        }
+        
+        .large-recipe-card .ingredients-list ul li:last-child {
+            border-bottom: none;
+        }
+        
+        .large-recipe-card .instructions-list ol {
+            font-size: 1.1rem;
+            padding-left: 25px;
+        }
+        
+        .large-recipe-card .instructions-list ol li {
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        
+        .large-recipe-card .btn-lg {
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            border-radius: 30px;
+        }
+        
+        .large-recipe-card .badge.fs-5 {
+            font-size: 1.1rem !important;
+            padding: 15px 25px !important;
+            border-radius: 20px;
+        }
+        
+
+        
+        /* Стили для секций готовки */
+        .cooking-session {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+            margin-bottom: 20px;
+        }
+        
+        .session-header {
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .session-header h4 {
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+        
+        .session-header p {
+            margin-bottom: 0;
+            font-size: 0.95em;
+        }
+        
+        .ready-meal {
+            background: linear-gradient(135deg, #f8fff8, #e8f5e8);
+            border: 2px solid #d4edda;
+        }
+        
+        .ready-meal .product-header {
+            background: linear-gradient(45deg, #28a745, #20c997);
+        }
+        
+        /* Стили для разделителей этапов готовки */
+        .cooking-stage-divider {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 15px;
+            padding: 25px 20px;
+            border: 2px solid #dee2e6;
+            margin: 30px 0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+        
+        .stage-title {
+            color: #495057;
+            font-weight: 700;
+            margin-bottom: 10px;
+            font-size: 1.8rem;
+        }
+        
+        .stage-description {
+            color: #6c757d;
+            font-size: 1.1em;
+            margin-bottom: 0;
+            font-style: italic;
+        }
+        
+        /* Мобильные стили */
+        @media (max-width: 768px) {
+            
+            .recipe-header {
+                text-align: center;
+            }
+            
+            .recipe-actions {
+                justify-content: center;
+                width: 100%;
+            }
+            
+            .recipe-actions .btn {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            
+            .recipe-header .row {
+                margin: 0;
+            }
+        }
+        
+        /* Стили для планшетов */
+        @media (min-width: 769px) and (max-width: 1023px) {
+            .recipe-actions {
+                justify-content: center;
+            }
+            
+            .recipe-actions .btn {
+                min-width: 200px;
+            }
+        }
+        
+        /* Стили для больших экранов (lg и выше) */
+        @media (min-width: 1024px) {
+            .recipe-header .d-flex {
+                align-items: center;
+            }
+            
+            .recipe-actions {
+                flex-shrink: 0;
+            }
+            
+            .recipe-actions .btn {
+                white-space: nowrap;
+            }
+        }
+            
+            .recipe-header .col-md-6,
+            .recipe-header .col-lg-4 {
+                padding: 0 5px;
+                margin-bottom: 10px;
+            }
+            
+            .meal-card {
+                padding: 15px 10px;
+                margin-bottom: 10px;
+            }
+            
+            .meal-title {
+                font-size: 1rem;
+                margin-bottom: 8px;
+            }
+            
+            .meal-dish {
+                font-size: 0.9rem;
+            }
+            
+
+            
+            .meal-name {
+                font-size: 1.1rem;
+                margin-bottom: 12px;
+            }
+            
+            .ingredients-list h6,
+            .instructions-list h6 {
+                font-size: 1rem;
+                margin-bottom: 8px;
+            }
+            
+            .ingredients-list ul li,
+            .instructions-list ol li {
+                font-size: 0.9rem;
+                margin-bottom: 4px;
+            }
+            
+
+            
+
+            
+            /* Мобильные стили для карточек продуктов */
+            .product-card {
+                margin-bottom: 15px;
+            }
+            
+            .product-header {
+                padding: 12px 15px;
+            }
+            
+            .product-header h5 {
+                font-size: 1.1rem;
+            }
+            
+            .product-body {
+                padding: 15px;
+            }
+            
+            .input-group {
+                margin-bottom: 12px;
+            }
+            
+            .input-group .form-control {
+                font-size: 0.9rem;
+                padding: 8px 12px;
+            }
+            
+            .input-group .input-group-text {
+                font-size: 0.9rem;
+                padding: 8px 12px;
+            }
+            
+            .info-display {
+                font-size: 1.1rem;
+                padding: 6px 10px;
+            }
+            .info-display-secondary {
+                font-size: 0.9rem;
+                padding: 3px 6px;
+            }
+            .btn-custom {
+                padding: 8px 16px;
+                font-size: 0.9rem;
+            }
+            
+            .badge {
+                font-size: 0.8rem;
+                padding: 6px 10px;
+            }
+            
+
+            
+            .header {
+                margin-bottom: 20px;
+                padding-bottom: 15px;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .header p {
+                font-size: 1rem;
+            }
+            
+            /* Мобильные стили для интерактивных карточек рецептов */
+            .meal-card {
+                padding: 12px 8px;
+                transition: all 0.2s ease;
+            }
+            
+            .meal-card:active {
+                transform: scale(0.98);
+                background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            }
+            
+            /* Мобильные стили для разделителей этапов */
+            .cooking-stage-divider {
+                padding: 20px 15px;
+                margin: 20px 0;
+            }
+            
+            .stage-title {
+                font-size: 1.5rem;
+                margin-bottom: 8px;
+            }
+            
+            .stage-description {
+                font-size: 1rem;
+            }
+            
+            /* Мобильные стили для больших карточек рецептов */
+            .large-recipe-card .product-header {
+                padding: 20px 20px;
+            }
+            
+            .large-recipe-card .product-header h4 {
+                font-size: 1.4rem;
+            }
+            
+            .large-recipe-card .product-body {
+                padding: 20px;
+            }
+            
+            .large-recipe-card .ingredients-list h5,
+            .large-recipe-card .instructions-list h5 {
+                font-size: 1.1rem;
+                margin-bottom: 15px;
+            }
+            
+            .large-recipe-card .ingredients-list ul li {
+                font-size: 1rem;
+                margin-bottom: 10px;
+            }
+            
+            .large-recipe-card .instructions-list ol {
+                font-size: 1rem;
+                padding-left: 20px;
+            }
+            
+            .large-recipe-card .instructions-list ol li {
+                margin-bottom: 12px;
+            }
+            
+            .large-recipe-card .btn-lg {
+                padding: 12px 30px;
+                font-size: 1.1rem;
+            }
+            
+            .large-recipe-card .badge.fs-5 {
+                font-size: 1rem !important;
+                padding: 12px 20px !important;
+            }
+        }
+            border-radius: 15px;
+            border: none;
+            font-weight: 500;
+        }
+        .alert-success {
+            background: linear-gradient(45deg, #d4edda, #c3e6cb);
+            color: #155724;
+        }
+        .alert-danger {
+            background: linear-gradient(45deg, #f8d7da, #f5c6cb);
+            color: #721c24;
+        }
+        .form-control {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            padding: 12px 15px;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+        }
+        .stats-card {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .stats-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stats-label {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        /* Стили для кликабельных карточек статистики */
+        .clickable-stats {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .clickable-stats:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        
+        .clickable-stats:active {
+            transform: translateY(-2px);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+        .empty-state i {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+        }
+        .navbar-brand {
+            font-weight: 700;
+            color: #495057 !important;
+        }
+        .nav-link {
+            color: #6c757d !important;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+        .nav-link:hover {
+            color: #667eea !important;
+        }
+        
+        /* Стили для автодополнения */
+        .autocomplete-list {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .autocomplete-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        
+        .autocomplete-item:hover {
+            background-color: #f8f9fa !important;
+        }
+        
+        .autocomplete-item:last-child {
+            border-bottom: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="main-container">
+            <!-- Навигация -->
+            <nav class="navbar navbar-expand-lg">
+                <div class="container-fluid">
+                    <a class="navbar-brand" href="{{ url_for('index') }}">
+                        <i class="fas fa-utensils me-2"></i>
+                        Мультиварка
+                    </a>
+                    <div class="navbar-nav ms-auto">
+                        <a class="nav-link" href="{{ url_for('index') }}">
+                            <i class="fas fa-home me-1"></i>Главная
+                        </a>
+                        <a class="nav-link" href="{{ url_for('manage_recipes') }}">
+                            <i class="fas fa-book me-1"></i>Управление рецептами
+                        </a>
+                    </div>
+
+                </div>
+            </nav>
+
+            <!-- Сообщения -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                            <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' }} me-2"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Основной контент -->
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <!-- Модальные окна -->
+    {% block modals %}{% endblock %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Автоматическое скрытие сообщений через 5 секунд
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+        
+        // Предотвращаем масштабирование при появлении клавиатуры на мобильных устройствах
+        document.addEventListener('DOMContentLoaded', function() {
+            // Проверяем, что это мобильное устройство
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                // Сохраняем исходный viewport
+                const originalViewport = document.querySelector('meta[name="viewport"]');
+                const originalContent = originalViewport ? originalViewport.getAttribute('content') : '';
+                
+                // Добавляем обработчики для всех полей ввода
+                const inputs = document.querySelectorAll('input, textarea, select');
+                
+                inputs.forEach(function(input) {
+                    input.addEventListener('focus', function() {
+                        // Устанавливаем viewport без масштабирования
+                        if (originalViewport) {
+                            originalViewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+                        }
+                    });
+                    
+                    input.addEventListener('blur', function() {
+                        // Восстанавливаем исходный viewport
+                        if (originalViewport && originalContent) {
+                            originalViewport.setAttribute('content', originalContent);
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
