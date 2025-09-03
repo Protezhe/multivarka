@@ -537,10 +537,27 @@ function throwAwayProduct(productName) {
                     input.value = 0;
                 }
                 
-                // Очищаем срок годности
-                const expirationInput = document.querySelector(`input.expiration-date[data-product="${productName}"]`);
+                // Очищаем срок годности - используем более надежный поиск
+                let expirationInput = document.querySelector(`input.expiration-date[data-product="${productName}"]`);
+                if (!expirationInput) {
+                    // Альтернативный поиск - ищем по всем input с data-product
+                    const allInputs = document.querySelectorAll(`input[data-product="${productName}"]`);
+                    expirationInput = Array.from(allInputs).find(input => input.classList.contains('expiration-date'));
+                }
+                
+                if (!expirationInput) {
+                    // Еще один альтернативный поиск - ищем по типу input[type="date"]
+                    const allDateInputs = document.querySelectorAll(`input[type="date"][data-product="${productName}"]`);
+                    if (allDateInputs.length > 0) {
+                        expirationInput = allDateInputs[0];
+                    }
+                }
+                
                 if (expirationInput) {
                     expirationInput.value = '';
+                    console.log(`Очищен срок годности для ${productName}`);
+                } else {
+                    console.log(`Не найден input срока годности для ${productName}`);
                 }
                 
                 // Обновляем статус продукта (скрываем, так как продукт выброшен)
@@ -1077,14 +1094,37 @@ function toggleSkipCooking(mealType) {
 // Функция для обновления статуса продукта на основе срока годности
 function updateProductStatus(productName, expirationDate) {
     // Находим элемент статуса для этого продукта - используем более надежный способ
-    const expirationInput = document.querySelector(`input.expiration-date[data-product="${productName}"]`);
-    if (!expirationInput) return;
+    let expirationInput = document.querySelector(`input.expiration-date[data-product="${productName}"]`);
+    if (!expirationInput) {
+        // Альтернативный поиск - ищем по всем input с data-product
+        const allInputs = document.querySelectorAll(`input[data-product="${productName}"]`);
+        expirationInput = Array.from(allInputs).find(input => input.classList.contains('expiration-date'));
+    }
+    
+    if (!expirationInput) {
+        // Еще один альтернативный поиск - ищем по типу input[type="date"]
+        const allDateInputs = document.querySelectorAll(`input[type="date"][data-product="${productName}"]`);
+        if (allDateInputs.length > 0) {
+            expirationInput = allDateInputs[0];
+        }
+    }
+    
+    if (!expirationInput) {
+        console.log(`Не найден input срока годности для ${productName} в updateProductStatus`);
+        return;
+    }
     
     const warehouseItem = expirationInput.closest('.warehouse-item');
-    if (!warehouseItem) return;
+    if (!warehouseItem) {
+        console.log(`Не найден warehouse-item для ${productName}`);
+        return;
+    }
     
     const statusBadge = warehouseItem.querySelector('.badge');
-    if (!statusBadge) return;
+    if (!statusBadge) {
+        console.log(`Не найден badge для ${productName}`);
+        return;
+    }
     
     // Если срок годности не указан - не показываем никакого статуса
     if (!expirationDate) {
