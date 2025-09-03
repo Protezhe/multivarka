@@ -501,6 +501,59 @@
             font-size: 0.875rem;
             padding: 0.375rem 0.75rem;
         }
+
+        /* Стили для кнопок наличия продуктов */
+        .availability-btn {
+            background: transparent !important;
+            border: 2px solid #9ca3af !important;
+            color: #9ca3af !important;
+            font-weight: 300 !important;
+            transition: all 0.3s ease !important;
+            cursor: pointer !important;
+            border-radius: 8px !important;
+            box-shadow: none !important;
+            font-size: 0.85rem !important;
+        }
+
+        .availability-btn:hover {
+            background: rgba(156, 163, 175, 0.1) !important;
+            border-color: #6b7280 !important;
+            color: #6b7280 !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 6px rgba(156, 163, 175, 0.2) !important;
+        }
+
+        .availability-btn.available {
+            border-color: #9ca3af !important;
+            color: #9ca3af !important;
+        }
+
+        .availability-btn.available:hover {
+            background: rgba(156, 163, 175, 0.1) !important;
+            border-color: #6b7280 !important;
+            color: #6b7280 !important;
+        }
+
+        .availability-btn.not-available {
+            border-color: #9ca3af !important;
+            color: #9ca3af !important;
+        }
+
+        .availability-btn.not-available:hover {
+            background: rgba(156, 163, 175, 0.1) !important;
+            border-color: #6b7280 !important;
+            color: #6b7280 !important;
+        }
+
+
+
+        /* Мобильные стили для кнопок наличия продуктов */
+        @media (max-width: 768px) {
+            .availability-btn {
+                font-size: 0.8rem !important;
+                padding: 0.25rem 0.5rem !important;
+            }
+        }
         
         .warehouse-item .input-group-sm .input-group-text {
             font-size: 0.875rem;

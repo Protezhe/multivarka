@@ -890,47 +890,15 @@ async function handleNewProductCreationForEdit(selectElement) {
         selectElement.value = ''; // Сбрасываем выбор
         return;
     }
-    
-    const units = ['шт', 'кг', 'г', 'л', 'мл', 'пакетик', 'ч.л.', 'ст.л.', 'кубик', 'банка', 'упаковка', 'есть/нет'];
-    const unitChoice = await promptWithModal(
-        'Единица измерения',
-        `Выберите единицу измерения для "${productName.trim()}"`,
-        `Доступные варианты: ${units.join(', ')}. Введите номер (1-${units.length}) или название`,
-        '1'
-    );
-    
-    let selectedUnit;
-    if (!isNaN(unitChoice) && unitChoice >= 1 && unitChoice <= units.length) {
-        selectedUnit = units[parseInt(unitChoice) - 1];
-    } else if (units.includes(unitChoice.trim())) {
-        selectedUnit = unitChoice.trim();
-    } else {
-        showNotification('Некорректная единица измерения', 'danger');
+
+    // Создаем модальное окно с удобным выбором единицы измерения и типа продукта
+    const result = await showProductCreationModal(productName.trim());
+    if (!result) {
         selectElement.value = ''; // Сбрасываем выбор
         return;
     }
-    
-    // Определяем тип продукта автоматически на основе единицы измерения
-    let productType = 'quantity';
-    if (selectedUnit === 'есть/нет') {
-        productType = 'availability';
-    } else {
-        // Спрашиваем тип продукта только для количественных единиц
-        const productTypeChoice = await promptWithModal(
-            'Тип продукта',
-            `Выберите тип продукта для "${productName.trim()}"`,
-            '1. Количественный (с указанием количества)\n2. Простое наличие (есть/нет)',
-            '1'
-        );
-        
-        if (productTypeChoice === '2') {
-            productType = 'availability';
-        } else if (productTypeChoice !== '1') {
-            showNotification('Некорректный выбор типа продукта', 'danger');
-            selectElement.value = ''; // Сбрасываем выбор
-            return;
-        }
-    }
+
+    const { selectedUnit, productType } = result;
     
     try {
         // Сохраняем новый продукт в базу данных
@@ -1411,6 +1379,225 @@ function populateProductSelect(productSelect) {
     };
 }
 
+// Функция для показа модального окна создания продукта с удобным выбором
+function showProductCreationModal(productName) {
+    return new Promise((resolve) => {
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-plus me-2"></i>Создание нового продукта
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Название продукта:</label>
+                            <p class="form-control-plaintext border p-2 bg-light rounded">${productName}</p>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Тип продукта:</label>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="productType" id="typeQuantity" value="quantity" checked>
+                                        <label class="form-check-label" for="typeQuantity">
+                                            <strong>Количественный</strong><br>
+                                            <small class="text-muted">Указывается точное количество (шт, кг, г, л, мл)</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="productType" id="typeAvailability" value="availability">
+                                        <label class="form-check-label" for="typeAvailability">
+                                            <strong>Простое наличие</strong><br>
+                                            <small class="text-muted">Продукт либо есть, либо нет (есть/нет)</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3" id="unitSelectionContainer">
+                            <label class="form-label fw-bold">Единица измерения:</label>
+                            <div class="row g-2">
+                                <!-- Количественные единицы -->
+                                <div class="col-6 col-md-4" data-type="quantity">
+                                    <button type="button" class="btn btn-outline-primary w-100 unit-btn" data-unit="шт">
+                                        <i class="fas fa-cubes me-1"></i>шт
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-4" data-type="quantity">
+                                    <button type="button" class="btn btn-outline-primary w-100 unit-btn" data-unit="кг">
+                                        <i class="fas fa-weight-hanging me-1"></i>кг
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-4" data-type="quantity">
+                                    <button type="button" class="btn btn-outline-primary w-100 unit-btn" data-unit="г">
+                                        <i class="fas fa-weight me-1"></i>г
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-4" data-type="quantity">
+                                    <button type="button" class="btn btn-outline-primary w-100 unit-btn" data-unit="л">
+                                        <i class="fas fa-tint me-1"></i>л
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-4" data-type="quantity">
+                                    <button type="button" class="btn btn-outline-primary w-100 unit-btn" data-unit="мл">
+                                        <i class="fas fa-tint me-1"></i>мл
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-4" data-type="quantity">
+                                    <button type="button" class="btn btn-outline-primary w-100 unit-btn" data-unit="пакетик">
+                                        <i class="fas fa-box me-1"></i>пакетик
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-4" data-type="quantity">
+                                    <button type="button" class="btn btn-outline-primary w-100 unit-btn" data-unit="ч.л.">
+                                        <i class="fas fa-spoon me-1"></i>ч.л.
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-4" data-type="quantity">
+                                    <button type="button" class="btn btn-outline-primary w-100 unit-btn" data-unit="ст.л.">
+                                        <i class="fas fa-utensil-spoon me-1"></i>ст.л.
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-4" data-type="quantity">
+                                    <button type="button" class="btn btn-outline-primary w-100 unit-btn" data-unit="кубик">
+                                        <i class="fas fa-cube me-1"></i>кубик
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-4" data-type="quantity">
+                                    <button type="button" class="btn btn-outline-primary w-100 unit-btn" data-unit="банка">
+                                        <i class="fas fa-can-food me-1"></i>банка
+                                    </button>
+                                </div>
+                                <div class="col-6 col-md-4" data-type="quantity">
+                                    <button type="button" class="btn btn-outline-primary w-100 unit-btn" data-unit="упаковка">
+                                        <i class="fas fa-box-open me-1"></i>упаковка
+                                    </button>
+                                </div>
+                                <!-- Единица для наличия -->
+                                <div class="col-12" data-type="availability">
+                                    <button type="button" class="btn btn-outline-success w-100 unit-btn" data-unit="есть/нет">
+                                        <i class="fas fa-check-circle me-1"></i>есть/нет
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-2"></i>Отмена
+                        </button>
+                        <button type="button" class="btn btn-success" id="createProductBtn">
+                            <i class="fas fa-plus me-2"></i>Создать продукт
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        const bsModal = new bootstrap.Modal(modal);
+
+        let selectedUnit = null;
+        let selectedType = 'quantity';
+
+        // Обработчики для типа продукта
+        const typeInputs = modal.querySelectorAll('input[name="productType"]');
+        typeInputs.forEach(input => {
+            input.addEventListener('change', function() {
+                selectedType = this.value;
+                updateUnitButtonsVisibility();
+            });
+        });
+
+        // Функция для обновления видимости кнопок единиц
+        function updateUnitButtonsVisibility() {
+            const unitButtons = modal.querySelectorAll('.unit-btn');
+            const unitContainers = modal.querySelectorAll('[data-type]');
+
+            unitContainers.forEach(container => {
+                if (container.getAttribute('data-type') === selectedType) {
+                    container.style.display = 'block';
+                } else {
+                    container.style.display = 'none';
+                }
+            });
+
+            // Сбрасываем выбор единицы при смене типа
+            selectedUnit = null;
+            unitButtons.forEach(btn => btn.classList.remove('active', 'btn-primary'));
+            unitButtons.forEach(btn => btn.classList.add('btn-outline-primary', 'btn-outline-success'));
+        }
+
+        // Обработчики для кнопок единиц
+        const unitButtons = modal.querySelectorAll('.unit-btn');
+        unitButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Сбрасываем все кнопки
+                unitButtons.forEach(btn => {
+                    btn.classList.remove('active', 'btn-primary', 'btn-success');
+                    if (btn.dataset.unit === 'есть/нет') {
+                        btn.classList.add('btn-outline-success');
+                    } else {
+                        btn.classList.add('btn-outline-primary');
+                    }
+                });
+
+                // Выделяем выбранную кнопку
+                this.classList.add('active');
+                if (this.dataset.unit === 'есть/нет') {
+                    this.classList.add('btn-success');
+                } else {
+                    this.classList.add('btn-primary');
+                }
+
+                selectedUnit = this.dataset.unit;
+            });
+        });
+
+        // Обработчик кнопки создания
+        const createBtn = modal.querySelector('#createProductBtn');
+        createBtn.addEventListener('click', function() {
+            if (!selectedUnit) {
+                showNotification('Пожалуйста, выберите единицу измерения', 'warning');
+                return;
+            }
+
+            bsModal.hide();
+            resolve({
+                selectedUnit: selectedUnit,
+                productType: selectedType
+            });
+        });
+
+        // Закрытие по ESC
+        modal.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                bsModal.hide();
+                resolve(null);
+            }
+        });
+
+        // Убираем модальное окно после закрытия
+        modal.addEventListener('hidden.bs.modal', () => {
+            modal.remove();
+        });
+
+        // Инициализация видимости кнопок
+        updateUnitButtonsVisibility();
+
+        bsModal.show();
+    });
+}
+
 // Обработка создания нового продукта из выпадающего списка для нового рецепта
 async function handleNewProductCreation(selectElement) {
     const productName = await promptWithModal(
@@ -1422,47 +1609,15 @@ async function handleNewProductCreation(selectElement) {
         selectElement.value = ''; // Сбрасываем выбор
         return;
     }
-    
-    const units = ['шт', 'кг', 'г', 'л', 'мл', 'пакетик', 'ч.л.', 'ст.л.', 'кубик', 'банка', 'упаковка', 'есть/нет'];
-    const unitChoice = await promptWithModal(
-        'Единица измерения', 
-        `Выберите единицу измерения для "${productName.trim()}"`,
-        `Доступные варианты: ${units.join(', ')}. Введите номер (1-${units.length}) или название`,
-        '1'
-    );
-    
-    let selectedUnit;
-    if (!isNaN(unitChoice) && unitChoice >= 1 && unitChoice <= units.length) {
-        selectedUnit = units[parseInt(unitChoice) - 1];
-    } else if (units.includes(unitChoice.trim())) {
-        selectedUnit = unitChoice.trim();
-    } else {
-        showNotification('Некорректная единица измерения', 'danger');
+
+    // Создаем модальное окно с удобным выбором единицы измерения и типа продукта
+    const result = await showProductCreationModal(productName.trim());
+    if (!result) {
         selectElement.value = ''; // Сбрасываем выбор
         return;
     }
-    
-    // Определяем тип продукта автоматически на основе единицы измерения
-    let productType = 'quantity';
-    if (selectedUnit === 'есть/нет') {
-        productType = 'availability';
-    } else {
-        // Спрашиваем тип продукта только для количественных единиц
-        const productTypeChoice = await promptWithModal(
-            'Тип продукта',
-            `Выберите тип продукта для "${productName.trim()}"`,
-            '1. Количественный (с указанием количества)\n2. Простое наличие (есть/нет)',
-            '1'
-        );
-        
-        if (productTypeChoice === '2') {
-            productType = 'availability';
-        } else if (productTypeChoice !== '1') {
-            showNotification('Некорректный выбор типа продукта', 'danger');
-            selectElement.value = ''; // Сбрасываем выбор
-            return;
-        }
-    }
+
+    const { selectedUnit, productType } = result;
     
     try {
         // Сохраняем новый продукт в базу данных

@@ -266,23 +266,17 @@
                     {% if product_data.get('тип', 'quantity') == 'availability' %}
                         <div class="input-group input-group-sm">
                             {% if product_data.количество > 0 %}
-                                <button type="button" 
-                                        class="form-control text-center" 
+                                <button type="button"
+                                        class="form-control text-center availability-btn available"
                                         onclick="setProductAvailable('{{ product_name }}')"
-                                        title="Продукт есть в наличии"
-                                        style="background-color: #d4edda !important; border-color: #c3e6cb !important; color: #155724 !important; cursor: pointer;"
-                                        onmouseover="this.style.backgroundColor='#c3e6cb'"
-                                        onmouseout="this.style.backgroundColor='#d4edda'">
+                                        title="Продукт есть в наличии">
                                     ЕСТЬ
                                 </button>
                             {% else %}
-                                <button type="button" 
-                                        class="form-control text-center" 
+                                <button type="button"
+                                        class="form-control text-center availability-btn not-available"
                                         onclick="setProductAvailable('{{ product_name }}')"
-                                        title="Отметить продукт как имеющийся в наличии"
-                                        style="background-color: #f8f9fa !important; border-color: #ced4da !important; color: #495057 !important; cursor: pointer;"
-                                        onmouseover="this.style.backgroundColor='#e9ecef'"
-                                        onmouseout="this.style.backgroundColor='#f8f9fa'">
+                                        title="Отметить продукт как имеющийся в наличии">
                                     НЕТ
                                 </button>
                             {% endif %}
@@ -633,10 +627,11 @@ function throwAwayProduct(productName) {
                 // Обновляем кнопку "ЕСТЬ" для продуктов с типом availability
                 const availabilityButton = document.querySelector(`button[onclick="setProductAvailable('${productName}')"]`);
                 if (availabilityButton) {
-                    availabilityButton.textContent = 'НЕТ';
-                    availabilityButton.style.backgroundColor = '#f8f9fa';
-                    availabilityButton.style.color = '#495057';
-                    availabilityButton.style.borderColor = '#ced4da';
+                    // Меняем текст
+                    availabilityButton.innerHTML = 'НЕТ';
+                    // Меняем классы для стиля
+                    availabilityButton.classList.remove('available');
+                    availabilityButton.classList.add('not-available');
                     availabilityButton.title = 'Отметить продукт как имеющийся в наличии';
                 }
                 
@@ -672,20 +667,21 @@ function setProductAvailable(productName) {
     .then(data => {
         if (data.success) {
             // Уведомление убрано по запросу пользователя
-            
+
             // Обновляем кнопку и статус продукта
             const button = document.querySelector(`button[onclick="setProductAvailable('${productName}')"]`);
             if (button) {
-                button.textContent = 'ЕСТЬ';
-                button.style.backgroundColor = '#d4edda';
-                button.style.color = '#155724';
-                button.style.borderColor = '#c3e6cb';
+                // Меняем текст
+                button.innerHTML = 'ЕСТЬ';
+                // Меняем классы для стиля
+                button.classList.remove('not-available');
+                button.classList.add('available');
                 button.title = 'Продукт есть в наличии';
             }
-            
+
             // Обновляем статус продукта (без срока годности)
             updateProductStatus(productName, null);
-            
+
             // Обновляем список покупок
             setTimeout(async () => {
                 await updateShoppingListFromAPI();
@@ -876,16 +872,17 @@ function buyProductAvailability(productName, unit) {
                     // Обновляем кнопку и статус продукта
                     const button = document.querySelector(`button[onclick="setProductAvailable('${productName}')"]`);
                     if (button) {
-                        button.textContent = 'ЕСТЬ';
-                        button.style.backgroundColor = '#d4edda';
-                        button.style.color = '#155724';
-                        button.style.borderColor = '#c3e6cb';
+                        // Меняем текст
+                        button.innerHTML = 'ЕСТЬ';
+                        // Меняем классы для стиля
+                        button.classList.remove('not-available');
+                        button.classList.add('available');
                         button.title = 'Продукт есть в наличии';
                     }
-                    
+
                     // Обновляем статус продукта (без срока годности)
                     updateProductStatus(productName, null);
-                    
+
                     // Обновляем список покупок
                     await updateShoppingListFromAPI();
                 }, 500);
