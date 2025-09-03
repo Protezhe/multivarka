@@ -29,6 +29,16 @@ class MultivarkaDatabase:
             with self.lock:
                 conn = sqlite3.connect(self.db_path)
                 conn.executescript(schema)
+                
+                # Проверяем и добавляем колонку expiration_date если её нет
+                cursor = conn.cursor()
+                cursor.execute("PRAGMA table_info(warehouse)")
+                columns = [column[1] for column in cursor.fetchall()]
+                
+                if 'expiration_date' not in columns:
+                    cursor.execute("ALTER TABLE warehouse ADD COLUMN expiration_date DATE")
+                    print("Добавлена колонка expiration_date в таблицу warehouse")
+                
                 conn.commit()
                 conn.close()
         except Exception as e:
@@ -49,17 +59,20 @@ class MultivarkaDatabase:
             conn = self.get_connection()
             cursor = conn.cursor()
             
-            cursor.execute("SELECT product_name, quantity, unit, product_type FROM warehouse")
+            cursor.execute("SELECT product_name, quantity, unit, product_type, expiration_date FROM warehouse")
             rows = cursor.fetchall()
             conn.close()
             
             warehouse = {"склад": {}}
             for row in rows:
-                warehouse["склад"][row['product_name']] = {
+                product_data = {
                     "количество": row['quantity'],
                     "единица": row['unit'],
                     "тип": row['product_type']
                 }
+                if row['expiration_date']:
+                    product_data["срок_годности"] = row['expiration_date']
+                warehouse["склад"][row['product_name']] = product_data
             
             return warehouse
     
@@ -76,10 +89,11 @@ class MultivarkaDatabase:
                 # Добавляем новые данные
                 for product_name, product_data in warehouse_data.get("склад", {}).items():
                     product_type = product_data.get('тип', 'quantity')
+                    expiration_date = product_data.get('срок_годности')
                     cursor.execute("""
-                        INSERT INTO warehouse (product_name, quantity, unit, product_type)
-                        VALUES (?, ?, ?, ?)
-                    """, (product_name, product_data['количество'], product_data['единица'], product_type))
+                        INSERT INTO warehouse (product_name, quantity, unit, product_type, expiration_date)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (product_name, product_data['количество'], product_data['единица'], product_type, expiration_date))
                 
                 conn.commit()
                 conn.close()
@@ -109,7 +123,28 @@ class MultivarkaDatabase:
             print(f"Ошибка обновления продукта: {e}")
             return False
     
-    def add_product_to_warehouse(self, product_name: str, quantity: float, unit: str, product_type: str = 'quantity') -> bool:
+    def update_product_expiration(self, product_name: str, expiration_date: str) -> bool:
+        """Обновляет срок годности продукта на складе"""
+        try:
+            with self.lock:
+                conn = self.get_connection()
+                cursor = conn.cursor()
+                
+                cursor.execute("""
+                    UPDATE warehouse 
+                    SET expiration_date = ?, updated_at = CURRENT_TIMESTAMP 
+                    WHERE product_name = ?
+                """, (expiration_date, product_name))
+                
+                conn.commit()
+                success = cursor.rowcount > 0
+                conn.close()
+                return success
+        except Exception as e:
+            print(f"Ошибка обновления срока годности: {e}")
+            return False
+    
+    def add_product_to_warehouse(self, product_name: str, quantity: float, unit: str, product_type: str = 'quantity', expiration_date: str = None) -> bool:
         """Добавляет продукт к складу или увеличивает его количество"""
         try:
             with self.lock:
@@ -125,23 +160,23 @@ class MultivarkaDatabase:
                     if product_type == 'availability' or row['product_type'] == 'availability':
                         cursor.execute("""
                             UPDATE warehouse 
-                            SET quantity = 1, product_type = 'availability', updated_at = CURRENT_TIMESTAMP 
+                            SET quantity = 1, product_type = 'availability', expiration_date = ?, updated_at = CURRENT_TIMESTAMP 
                             WHERE product_name = ?
-                        """, (product_name,))
+                        """, (expiration_date, product_name))
                     else:
                         # Увеличиваем количество для обычных продуктов
                         new_quantity = row['quantity'] + quantity
                         cursor.execute("""
                             UPDATE warehouse 
-                            SET quantity = ?, updated_at = CURRENT_TIMESTAMP 
+                            SET quantity = ?, expiration_date = ?, updated_at = CURRENT_TIMESTAMP 
                             WHERE product_name = ?
-                        """, (new_quantity, product_name))
+                        """, (new_quantity, expiration_date, product_name))
                 else:
                     # Добавляем новый продукт
                     cursor.execute("""
-                        INSERT INTO warehouse (product_name, quantity, unit, product_type)
-                        VALUES (?, ?, ?, ?)
-                    """, (product_name, quantity, unit, product_type))
+                        INSERT INTO warehouse (product_name, quantity, unit, product_type, expiration_date)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (product_name, quantity, unit, product_type, expiration_date))
                 
                 conn.commit()
                 conn.close()

@@ -26,6 +26,32 @@ def format_number(value):
             return f"{value:.1f}".rstrip('0').rstrip('.')
     return str(value)
 
+# Добавляем функцию для работы с датами в шаблонах
+@app.template_global()
+def get_product_expiration_status(expiration_date_str):
+    """Определяет статус продукта на основе срока годности"""
+    if not expiration_date_str:
+        return None, None
+    
+    try:
+        from datetime import datetime, date
+        expiration_date = datetime.strptime(expiration_date_str, '%Y-%m-%d').date()
+        today = date.today()
+        days_until_expiration = (expiration_date - today).days
+        
+        if days_until_expiration < 0:
+            return 'expired', 'Просрочен'
+        elif days_until_expiration == 0:
+            return 'expires_today', 'Сегодня истекает'
+        elif days_until_expiration <= 2:
+            return 'expiring_soon', 'Скоро истекает'
+        elif days_until_expiration <= 7:
+            return 'expiring_week', 'Истекает на неделе'
+        else:
+            return 'fresh', 'Свежий'
+    except ValueError:
+        return None, None
+
 def load_sklad():
     """Загружает данные склада из базы данных"""
     return db.load_warehouse()
@@ -259,11 +285,15 @@ def api_update_product(product):
     try:
         data = request.get_json()
         quantity = float(data.get('quantity', 0))
+        expiration_date = data.get('expiration_date')
         
         if quantity < 0:
             return jsonify({'error': 'Количество не может быть отрицательным'}), 400
         
         if db.update_product_quantity(product, quantity):
+            # Обновляем срок годности, если он указан
+            if expiration_date is not None:
+                db.update_product_expiration(product, expiration_date)
             return jsonify({'success': True, 'message': f'Количество {product} обновлено'})
         else:
             return jsonify({'error': 'Продукт не найден'}), 404
@@ -355,6 +385,7 @@ def api_buy_single_product():
         quantity = data.get('quantity')
         unit = data.get('unit')
         product_type = data.get('product_type', 'quantity')
+        expiration_date = data.get('expiration_date')
         
         if not product or quantity is None or not unit:
             return jsonify({'error': 'Не все параметры указаны'}), 400
@@ -362,7 +393,7 @@ def api_buy_single_product():
         if quantity < 0:
             return jsonify({'error': 'Количество не может быть отрицательным'}), 400
         
-        if db.add_product_to_warehouse(product, quantity, unit, product_type):
+        if db.add_product_to_warehouse(product, quantity, unit, product_type, expiration_date):
             if product_type == 'availability':
                 message = f'Продукт "{product}" добавлен на склад (есть в наличии)'
             else:
@@ -382,6 +413,7 @@ def api_create_new_product():
         product = data.get('product')
         unit = data.get('unit')
         product_type = data.get('product_type', 'quantity')
+        expiration_date = data.get('expiration_date')
         
         if not product or not unit:
             return jsonify({'error': 'Не указано название продукта или единица измерения'}), 400
@@ -398,7 +430,7 @@ def api_create_new_product():
             return jsonify({'error': f'Продукт "{product}" уже существует на складе'}), 409
         
         # Добавляем продукт с нулевым количеством
-        if db.add_product_to_warehouse(product, 0, unit, product_type):
+        if db.add_product_to_warehouse(product, 0, unit, product_type, expiration_date):
             return jsonify({
                 'success': True, 
                 'message': f'Новый продукт "{product}" ({unit}) создан на складе',
@@ -406,7 +438,8 @@ def api_create_new_product():
                     'name': product,
                     'unit': unit,
                     'quantity': 0,
-                    'type': product_type
+                    'type': product_type,
+                    'expiration_date': expiration_date
                 }
             })
         else:

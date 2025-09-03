@@ -253,7 +253,10 @@
                 <div class="col-md-2 text-center">
                     <h6 class="mb-0">Статус</h6>
                 </div>
-                <div class="col-md-4 text-center">
+                <div class="col-md-2 text-center">
+                    <h6 class="mb-0">Срок годности</h6>
+                </div>
+                <div class="col-md-2 text-center">
                     <h6 class="mb-0">Действия</h6>
                 </div>
             </div>
@@ -293,33 +296,39 @@
                     {% endif %}
                 </div>
                 <div class="col-md-2 text-center">
-                    {% if product_data.get('тип', 'quantity') == 'availability' %}
-                        {% if product_data.количество > 0 %}
-                            <span class="badge bg-success">
-                                <i class="fas fa-check-circle me-1"></i>В наличии
-                            </span>
-                        {% else %}
+                    {% set expiration_status, expiration_text = get_product_expiration_status(product_data.get('срок_годности')) %}
+                    {% if product_data.get('срок_годности') %}
+                        {% if expiration_status == 'expired' %}
                             <span class="badge bg-danger">
-                                <i class="fas fa-exclamation-triangle me-1"></i>Закончился
+                                <i class="fas fa-exclamation-triangle me-1"></i>Просрочен
                             </span>
-                        {% endif %}
-                    {% else %}
-                        {% if product_data.количество == 0 %}
-                            <span class="badge bg-danger">
-                                <i class="fas fa-exclamation-triangle me-1"></i>Закончился
+                        {% elif expiration_status == 'expires_today' %}
+                            <span class="badge" style="background-color: #fd7e14; color: white;">
+                                <i class="fas fa-exclamation-triangle me-1"></i>Сегодня истекает
                             </span>
-                        {% elif product_data.количество < 5 %}
+                        {% elif expiration_status == 'expiring_soon' %}
                             <span class="badge bg-warning text-dark">
-                                <i class="fas fa-exclamation-circle me-1"></i>Мало
-                            </span>
-                        {% else %}
-                            <span class="badge bg-success">
-                                <i class="fas fa-check-circle me-1"></i>В наличии
+                                <i class="fas fa-exclamation-triangle me-1"></i>Скоро истекает
                             </span>
                         {% endif %}
                     {% endif %}
                 </div>
-                <div class="col-md-4 text-center">
+                <div class="col-md-2 text-center">
+                    {% if product_data.get('срок_годности') %}
+                        <input type="date" 
+                               class="form-control form-control-sm expiration-date" 
+                               data-product="{{ product_name }}"
+                               value="{{ product_data.срок_годности }}"
+                               style="font-size: 0.8rem;">
+                    {% else %}
+                        <input type="date" 
+                               class="form-control form-control-sm expiration-date" 
+                               data-product="{{ product_name }}"
+                               placeholder="Срок годности"
+                               style="font-size: 0.8rem;">
+                    {% endif %}
+                </div>
+                <div class="col-md-2 text-center">
                     <button type="button" 
                             class="btn btn-outline-danger btn-sm" 
                             onclick="throwAwayProduct('{{ product_name }}')"
@@ -467,6 +476,42 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    
+    // Обработка изменения срока годности
+    const expirationInputs = document.querySelectorAll('.expiration-date');
+    expirationInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            const product = this.dataset.product;
+            const expirationDate = this.value;
+            
+            // Сначала получаем текущее количество продукта
+            const quantityInput = document.querySelector(`input[data-product="${product}"]`);
+            const currentQuantity = quantityInput ? parseFloat(quantityInput.value) || 0 : 0;
+            
+            fetch(`/api/update/${encodeURIComponent(product)}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    quantity: currentQuantity, // Сохраняем текущее количество
+                    expiration_date: expirationDate
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Обновляем статус продукта на основе нового срока годности
+                    updateProductStatus(product, expirationDate);
+                } else {
+                    console.error('Ошибка обновления срока годности:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка обновления срока годности:', error);
+            });
+        });
+    });
 });
 
 // Функция для сброса количества продукта в 0
@@ -517,13 +562,17 @@ function throwAwayProduct(productName) {
 
 // Функция для установки продукта с простым наличием в состояние "есть"
 function setProductAvailable(productName) {
+    // Спрашиваем срок годности
+    const expirationDate = prompt(`Введите срок годности для ${productName} (YYYY-MM-DD) или оставьте пустым:`, '');
+    
     fetch(`/api/update/${encodeURIComponent(productName)}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            quantity: 1
+            quantity: 1,
+            expiration_date: expirationDate || null
         })
     })
     .then(response => response.json())
@@ -540,19 +589,14 @@ function setProductAvailable(productName) {
                 button.style.borderColor = '#c3e6cb';
             }
             
-            // Обновляем статус продукта
-            const statusBadge = document.querySelector(`.warehouse-item:has(button[onclick="setProductAvailable('${productName}')"]) .badge`);
-            if (statusBadge) {
-                statusBadge.className = 'badge bg-success';
-                statusBadge.innerHTML = '<i class="fas fa-check-circle me-1"></i>В наличии';
+            // Обновляем срок годности
+            const expirationInput = document.querySelector(`input.expiration-date[data-product="${productName}"]`);
+            if (expirationInput && expirationDate) {
+                expirationInput.value = expirationDate;
             }
             
-            // Удаляем уведомление через 3 секунды
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 3000);
+            // Обновляем статус продукта
+            updateProductStatus(productName, expirationDate);
         } else {
             console.error(`Ошибка при установке наличия ${productName}:`, data.error);
         }
@@ -666,6 +710,9 @@ function buyProduct(productName, neededAmount, unit) {
     if (amount !== null && !isNaN(parseFloat(amount)) && parseFloat(amount) >= 0) {
         const quantity = parseFloat(amount);
         
+        // Спрашиваем срок годности
+        const expirationDate = prompt(`Введите срок годности для ${productName} (YYYY-MM-DD) или оставьте пустым:`, '');
+        
         fetch('/api/buy_single_product', {
             method: 'POST',
             headers: {
@@ -675,7 +722,8 @@ function buyProduct(productName, neededAmount, unit) {
                 product: productName,
                 quantity: quantity,
                 unit: unit,
-                product_type: 'quantity'
+                product_type: 'quantity',
+                expiration_date: expirationDate || null
             })
         })
         .then(response => response.json())
@@ -691,20 +739,14 @@ function buyProduct(productName, neededAmount, unit) {
                         input.value = quantity;
                     }
                     
-                    // Обновляем статус продукта
-                    const statusBadge = document.querySelector(`.warehouse-item:has(input[data-product="${productName}"]) .badge`);
-                    if (statusBadge) {
-                        if (quantity === 0) {
-                            statusBadge.className = 'badge bg-danger';
-                            statusBadge.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Закончился';
-                        } else if (quantity < 5) {
-                            statusBadge.className = 'badge bg-warning text-dark';
-                            statusBadge.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i>Мало';
-                        } else {
-                            statusBadge.className = 'badge bg-success';
-                            statusBadge.innerHTML = '<i class="fas fa-check-circle me-1"></i>В наличии';
-                        }
+                    // Обновляем срок годности
+                    const expirationInput = document.querySelector(`input.expiration-date[data-product="${productName}"]`);
+                    if (expirationInput && expirationDate) {
+                        expirationInput.value = expirationDate;
                     }
+                    
+                    // Обновляем статус продукта
+                    updateProductStatus(productName, expirationDate);
                 }, 1000);
             } else {
                 console.error('Ошибка при покупке продукта:', data.error);
@@ -719,6 +761,9 @@ function buyProduct(productName, neededAmount, unit) {
 // Функция для покупки продукта с простым наличием
 function buyProductAvailability(productName, unit) {
     if (confirm(`Вы купили ${productName}?`)) {
+        // Спрашиваем срок годности
+        const expirationDate = prompt(`Введите срок годности для ${productName} (YYYY-MM-DD) или оставьте пустым:`, '');
+        
         fetch('/api/buy_single_product', {
             method: 'POST',
             headers: {
@@ -728,7 +773,8 @@ function buyProductAvailability(productName, unit) {
                 product: productName,
                 quantity: 1,
                 unit: unit,
-                product_type: 'availability'
+                product_type: 'availability',
+                expiration_date: expirationDate || null
             })
         })
         .then(response => response.json())
@@ -738,26 +784,23 @@ function buyProductAvailability(productName, unit) {
                 
                 // Обновляем интерфейс без перезагрузки страницы
                 setTimeout(() => {
-                    // Обновляем значение в поле ввода
-                    const input = document.querySelector(`input[data-product="${productName}"]`);
-                    if (input) {
-                        input.value = quantity;
+                    // Обновляем кнопку и статус продукта
+                    const button = document.querySelector(`button[onclick="setProductAvailable('${productName}')"]`);
+                    if (button) {
+                        button.textContent = 'ЕСТЬ';
+                        button.style.backgroundColor = '#d4edda';
+                        button.style.color = '#155724';
+                        button.style.borderColor = '#c3e6cb';
+                    }
+                    
+                    // Обновляем срок годности
+                    const expirationInput = document.querySelector(`input.expiration-date[data-product="${productName}"]`);
+                    if (expirationInput && expirationDate) {
+                        expirationInput.value = expirationDate;
                     }
                     
                     // Обновляем статус продукта
-                    const statusBadge = document.querySelector(`.warehouse-item:has(input[data-product="${productName}"]) .badge`);
-                    if (statusBadge) {
-                        if (quantity === 0) {
-                            statusBadge.className = 'badge bg-danger';
-                            statusBadge.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Закончился';
-                        } else if (quantity < 5) {
-                            statusBadge.className = 'badge bg-warning text-dark';
-                            statusBadge.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i>Мало';
-                        } else {
-                            statusBadge.className = 'badge bg-success';
-                            statusBadge.innerHTML = '<i class="fas fa-check-circle me-1"></i>В наличии';
-                        }
-                    }
+                    updateProductStatus(productName, expirationDate);
                 }, 1000);
             } else {
                 console.error('Ошибка при покупке продукта:', data.error);
@@ -1055,6 +1098,49 @@ function toggleSkipCooking(mealType) {
         button.innerHTML = originalContent;
         button.disabled = false;
     });
+}
+
+// Функция для обновления статуса продукта на основе срока годности
+function updateProductStatus(productName, expirationDate) {
+    // Находим элемент статуса для этого продукта - используем более надежный способ
+    const expirationInput = document.querySelector(`input.expiration-date[data-product="${productName}"]`);
+    if (!expirationInput) return;
+    
+    const warehouseItem = expirationInput.closest('.warehouse-item');
+    if (!warehouseItem) return;
+    
+    const statusBadge = warehouseItem.querySelector('.badge');
+    if (!statusBadge) return;
+    
+    // Если срок годности не указан - не показываем никакого статуса
+    if (!expirationDate) {
+        statusBadge.style.display = 'none';
+        return;
+    }
+    
+    const today = new Date();
+    const expDate = new Date(expirationDate);
+    const daysUntilExpiration = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+    
+    // Обновляем статус на основе срока годности
+    if (daysUntilExpiration < 0) {
+        statusBadge.className = 'badge bg-danger';
+        statusBadge.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Просрочен';
+        statusBadge.style.display = 'inline-block';
+    } else if (daysUntilExpiration === 0) {
+        statusBadge.className = 'badge';
+        statusBadge.style.backgroundColor = '#fd7e14';
+        statusBadge.style.color = 'white';
+        statusBadge.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Сегодня истекает';
+        statusBadge.style.display = 'inline-block';
+    } else if (daysUntilExpiration <= 2) {
+        statusBadge.className = 'badge bg-warning text-dark';
+        statusBadge.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Скоро истекает';
+        statusBadge.style.display = 'inline-block';
+    } else {
+        // Срок годности в порядке - не показываем статус
+        statusBadge.style.display = 'none';
+    }
 }
 
 // Функция для плавной прокрутки к рецепту

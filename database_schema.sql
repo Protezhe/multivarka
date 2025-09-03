@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS warehouse (
     quantity REAL NOT NULL DEFAULT 0,
     unit TEXT NOT NULL,
     product_type TEXT NOT NULL DEFAULT 'quantity', -- 'quantity' или 'availability'
+    expiration_date DATE, -- срок годности продукта
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -49,12 +50,17 @@ CREATE TABLE IF NOT EXISTS current_recipe (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Добавляем поле expiration_date к существующей таблице warehouse (если его еще нет)
+-- Используем PRAGMA для проверки существования колонки
+-- Если колонка не существует, добавляем её
+
 -- Индексы для оптимизации запросов
 CREATE INDEX IF NOT EXISTS idx_recipes_meal_type ON recipes(meal_type);
 CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe_id ON recipe_ingredients(recipe_id);
 CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_product ON recipe_ingredients(product_name);
 CREATE INDEX IF NOT EXISTS idx_recipe_instructions_recipe_id ON recipe_instructions(recipe_id);
 CREATE INDEX IF NOT EXISTS idx_warehouse_product ON warehouse(product_name);
+CREATE INDEX IF NOT EXISTS idx_warehouse_expiration ON warehouse(expiration_date);
 
 -- Триггеры для автоматического обновления updated_at
 CREATE TRIGGER IF NOT EXISTS update_warehouse_timestamp 
