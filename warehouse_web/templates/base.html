@@ -1001,10 +1001,10 @@
                         Мультиварка
                     </a>
                     <div class="navbar-nav ms-auto">
-                        <a class="nav-link" href="{{ url_for('index') }}">
+                        <a class="nav-link" href="{{ url_for('index') }}" onclick="handleNavigation(event, '{{ url_for('index') }}')">
                             <i class="fas fa-home me-1"></i>Главная
                         </a>
-                        <a class="nav-link" href="{{ url_for('manage_recipes') }}">
+                        <a class="nav-link" href="{{ url_for('manage_recipes') }}" onclick="handleNavigation(event, '{{ url_for('manage_recipes') }}')">
                             <i class="fas fa-book me-1"></i>Управление рецептами
                         </a>
                     </div>
@@ -1072,6 +1072,28 @@
                         }
                     });
                 });
+            }
+        });
+        
+        // SPA навигация
+        function handleNavigation(event, url) {
+            event.preventDefault();
+            
+            // Проверяем, доступна ли функция navigateToPage
+            if (typeof navigateToPage === 'function') {
+                navigateToPage(url);
+            } else {
+                // Fallback к обычной навигации
+                window.location.href = url;
+            }
+        }
+        
+        // Обработка кнопки "Назад" браузера
+        window.addEventListener('popstate', function(event) {
+            if (typeof navigateToPage === 'function') {
+                navigateToPage(window.location.pathname, false);
+            } else {
+                window.location.reload();
             }
         });
     </script>

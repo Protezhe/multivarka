@@ -20,10 +20,18 @@ app.secret_key = 'your-secret-key-here'  # В продакшене исполь�
 def format_number(value):
     """Форматирует числа, убирая ненужные десятичные знаки"""
     if isinstance(value, (int, float)):
-        if value == int(value):
-            return str(int(value))
+        # Округляем до 3 знаков после запятой для избежания погрешностей
+        rounded_value = round(value, 3)
+        
+        if rounded_value == int(rounded_value):
+            return str(int(rounded_value))
         else:
-            return f"{value:.1f}".rstrip('0').rstrip('.')
+            # Форматируем с достаточной точностью
+            formatted = f"{rounded_value:.3f}".rstrip('0').rstrip('.')
+            # Если получилось пустая строка или только точка, возвращаем 0
+            if not formatted or formatted == '.':
+                return '0'
+            return formatted
     return str(value)
 
 # Добавляем функцию для работы с датами в шаблонах
@@ -130,8 +138,10 @@ def analyze_ingredients(recipe, sklad):
                             'нужно': needed,
                             'единица': unit,
                             'есть': available,
+                            'всего_требуется': amount,  # Общее количество для рецепта
                             'тип': 'quantity'
                         }
+                    # Если продукта достаточно (available >= amount), он не попадает в needed_products
             else:
                 # Продукта нет на складе
                 if ingredient_type == 'availability':
@@ -146,6 +156,7 @@ def analyze_ingredients(recipe, sklad):
                         'нужно': amount,
                         'единица': unit,
                         'есть': 0,
+                        'всего_требуется': amount,  # Общее количество для рецепта
                         'тип': 'quantity'
                     }
     
@@ -265,6 +276,53 @@ def api_sklad():
     """API endpoint для получения данных склада"""
     sklad = load_sklad()
     return jsonify(sklad)
+
+@app.route('/api/current_recipe')
+def api_current_recipe():
+    """API endpoint для получения текущего рецепта и анализа ингредиентов"""
+    try:
+        # Загружаем склад и рецепт
+        sklad = load_sklad()
+        recipe = get_mixed_recipe()
+        
+        if not sklad or not recipe:
+            return jsonify({'error': 'Не удалось загрузить данные'}), 500
+        
+        # Анализируем ингредиенты
+        needed_products = analyze_ingredients(recipe, sklad)
+        
+        # Сортируем продукты холодильника в алфавитном порядке
+        sorted_sklad = dict(sorted(sklad['склад'].items(), key=lambda x: x[0].lower()))
+        
+        return jsonify({
+            'success': True,
+            'sklad': sorted_sklad,
+            'recipe': recipe,
+            'needed_products': needed_products
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/needed_products')
+def api_needed_products():
+    """API endpoint для получения обновленного списка необходимых продуктов"""
+    try:
+        # Загружаем склад и рецепт
+        sklad = load_sklad()
+        recipe = get_mixed_recipe()
+        
+        if not sklad or not recipe:
+            return jsonify({'error': 'Не удалось загрузить данные'}), 500
+        
+        # Анализируем ингредиенты
+        needed_products = analyze_ingredients(recipe, sklad)
+        
+        return jsonify({
+            'success': True,
+            'needed_products': needed_products
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/products')
 def api_products():

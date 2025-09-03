@@ -236,6 +236,178 @@ let ingredientCounter = 0;
 let warehouseProducts = [];
 let allRecipes = [];
 
+// Универсальная функция для создания модальных окон ввода
+function promptWithModal(title, question, hint = '', defaultValue = '', inputType = 'text') {
+    return new Promise((resolve) => {
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.innerHTML = `
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-question-circle me-2"></i>${title}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p><strong>${question}</strong></p>
+                        ${hint ? `<p class="text-muted"><small>${hint}</small></p>` : ''}
+                        <div class="mb-3">
+                            <input type="${inputType}" 
+                                   class="form-control" 
+                                   id="modalInput" 
+                                   value="${defaultValue}"
+                                   ${inputType === 'number' ? 'min="0" step="0.1"' : ''}>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-2"></i>Отмена
+                        </button>
+                        <button type="button" class="btn btn-success" id="confirmButton">
+                            <i class="fas fa-check me-2"></i>Подтвердить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        const bsModal = new bootstrap.Modal(modal);
+        const input = modal.querySelector('#modalInput');
+        const confirmBtn = modal.querySelector('#confirmButton');
+        
+        // Фокус на input при открытии
+        modal.addEventListener('shown.bs.modal', () => {
+            input.focus();
+            input.select();
+        });
+        
+        // Подтверждение по Enter
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                confirmBtn.click();
+            }
+        });
+        
+        // Обработчики кнопок
+        modal.querySelector('.btn-secondary').onclick = () => {
+            bsModal.hide();
+            resolve(null);
+        };
+        
+        confirmBtn.onclick = () => {
+            const value = input.value.trim();
+            bsModal.hide();
+            resolve(value);
+        };
+        
+        // Закрытие по ESC
+        modal.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                bsModal.hide();
+                resolve(null);
+            }
+        });
+        
+        // Убираем модальное окно после закрытия
+        modal.addEventListener('hidden.bs.modal', () => {
+            modal.remove();
+        });
+        
+        bsModal.show();
+    });
+}
+
+// Функция для подтверждения действий
+function confirmWithModal(title, message, details = '') {
+    return new Promise((resolve) => {
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.innerHTML = `
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-exclamation-triangle me-2 text-warning"></i>${title}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p><strong>${message}</strong></p>
+                        ${details ? `<div class="text-muted"><small>${details}</small></div>` : ''}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-2"></i>Отмена
+                        </button>
+                        <button type="button" class="btn btn-danger" id="confirmDeleteButton">
+                            <i class="fas fa-check me-2"></i>Подтвердить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        const bsModal = new bootstrap.Modal(modal);
+        
+        // Обработчики кнопок
+        modal.querySelector('.btn-secondary').onclick = () => {
+            bsModal.hide();
+            resolve(false);
+        };
+        modal.querySelector('#confirmDeleteButton').onclick = () => {
+            bsModal.hide();
+            resolve(true);
+        };
+        
+        // Убираем модальное окно после закрытия
+        modal.addEventListener('hidden.bs.modal', () => {
+            modal.remove();
+        });
+        
+        bsModal.show();
+    });
+}
+
+// Улучшенная функция показа уведомлений
+function showNotification(message, type = 'info', duration = 4000) {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px; max-width: 400px;';
+    
+    const icons = {
+        success: 'check-circle',
+        danger: 'exclamation-triangle',
+        warning: 'exclamation-circle',
+        info: 'info-circle'
+    };
+    
+    notification.innerHTML = `
+        <i class="fas fa-${icons[type] || 'info-circle'} me-2"></i>
+        <span>${message}</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Автоматически удаляем через указанное время
+    setTimeout(() => {
+        if (notification.parentNode) {
+            const bsAlert = bootstrap.Alert.getInstance(notification);
+            if (bsAlert) {
+                bsAlert.close();
+            } else {
+                notification.remove();
+            }
+        }
+    }, duration);
+    
+    return notification;
+}
+
 // Загрузка продуктов со склада
 async function loadWarehouseProducts() {
     try {
@@ -513,21 +685,9 @@ function addEditIngredientRow(ingredient = null) {
     const productSelect = ingredientRow.querySelector('.ingredient-product');
     populateEditProductSelect(productSelect);
     
-    // Добавляем обработчик для типа ингредиента
-    const typeSelect = ingredientRow.querySelector('.ingredient-type');
+    // Получаем элементы для работы с количеством
     const amountCol = ingredientRow.querySelector(`#edit-amount-col-${editIngredientCounter}`);
     const amountInput = ingredientRow.querySelector('.ingredient-amount');
-    
-    typeSelect.addEventListener('change', function() {
-        if (this.value === 'availability') {
-            amountCol.style.display = 'none';
-            amountInput.required = false;
-            amountInput.value = 1; // Для продуктов с наличием всегда 1
-        } else {
-            amountCol.style.display = 'block';
-            amountInput.required = true;
-        }
-    });
     
     // Устанавливаем значение если есть ингредиент
     if (ingredient) {
@@ -634,14 +794,23 @@ function populateEditProductSelect(productSelect) {
 
 // Обработка создания нового продукта из выпадающего списка в форме редактирования
 async function handleNewProductCreationForEdit(selectElement) {
-    const productName = prompt('Введите название нового продукта:', '');
+    const productName = await promptWithModal(
+        'Новый продукт',
+        'Введите название нового продукта:',
+        'Например: помидоры, хлеб, масло'
+    );
     if (!productName || !productName.trim()) {
         selectElement.value = ''; // Сбрасываем выбор
         return;
     }
     
     const units = ['шт', 'кг', 'г', 'л', 'мл', 'пакетик', 'ч.л.', 'ст.л.', 'кубик', 'банка', 'упаковка', 'есть/нет'];
-    const unitChoice = prompt(`Выберите единицу измерения для "${productName.trim()}":\n\n${units.map((u, i) => `${i+1}. ${u}`).join('\n')}\n\nВведите номер (1-${units.length}) или название единицы:`, '1');
+    const unitChoice = await promptWithModal(
+        'Единица измерения',
+        `Выберите единицу измерения для "${productName.trim()}"`,
+        `Доступные варианты: ${units.join(', ')}. Введите номер (1-${units.length}) или название`,
+        '1'
+    );
     
     let selectedUnit;
     if (!isNaN(unitChoice) && unitChoice >= 1 && unitChoice <= units.length) {
@@ -649,7 +818,7 @@ async function handleNewProductCreationForEdit(selectElement) {
     } else if (units.includes(unitChoice.trim())) {
         selectedUnit = unitChoice.trim();
     } else {
-        alert('Некорректная единица измерения');
+        showNotification('Некорректная единица измерения', 'danger');
         selectElement.value = ''; // Сбрасываем выбор
         return;
     }
@@ -660,12 +829,17 @@ async function handleNewProductCreationForEdit(selectElement) {
         productType = 'availability';
     } else {
         // Спрашиваем тип продукта только для количественных единиц
-        const productTypeChoice = prompt(`Выберите тип продукта для "${productName.trim()}":\n\n1. Количественный (с указанием количества)\n2. Простое наличие (есть/нет)\n\nВведите номер (1 или 2):`, '1');
+        const productTypeChoice = await promptWithModal(
+            'Тип продукта',
+            `Выберите тип продукта для "${productName.trim()}"`,
+            '1. Количественный (с указанием количества)\n2. Простое наличие (есть/нет)',
+            '1'
+        );
         
         if (productTypeChoice === '2') {
             productType = 'availability';
         } else if (productTypeChoice !== '1') {
-            alert('Некорректный выбор типа продукта');
+            showNotification('Некорректный выбор типа продукта', 'danger');
             selectElement.value = ''; // Сбрасываем выбор
             return;
         }
@@ -702,7 +876,7 @@ async function handleNewProductCreationForEdit(selectElement) {
                     // Устанавливаем единицу измерения
                     const unitDisplay = select.closest('.ingredient-row').querySelector('.ingredient-unit-display');
                     const amountInput = select.closest('.ingredient-row').querySelector('.ingredient-amount');
-                    const amountCol = select.closest('.ingredient-row').querySelector('[id^="amount-col-"]');
+                    const amountCol = select.closest('.ingredient-row').querySelector('[id^="edit-amount-col-"]');
                     unitDisplay.textContent = selectedUnit;
                     // Устанавливаем правильный шаг
                     updateAmountStep(amountInput, selectedUnit);
@@ -724,12 +898,12 @@ async function handleNewProductCreationForEdit(selectElement) {
             // Показываем уведомление об успешном добавлении
             showNotification(result.message, 'success');
         } else {
-            alert(result.error || 'Ошибка при создании продукта');
+            showNotification(result.error || 'Ошибка при создании продукта', 'danger');
             selectElement.value = ''; // Сбрасываем выбор
         }
     } catch (error) {
         console.error('Ошибка при создании продукта:', error);
-        alert('Ошибка при создании продукта');
+        showNotification('Ошибка при создании продукта', 'danger');
         selectElement.value = ''; // Сбрасываем выбор
     }
 }
@@ -744,7 +918,7 @@ async function saveEditedRecipe() {
     
     // Валидация
     if (!dishName) {
-        alert('Пожалуйста, введите название блюда');
+        showNotification('Пожалуйста, введите название блюда', 'warning');
         return;
     }
     
@@ -758,7 +932,7 @@ async function saveEditedRecipe() {
         const unit = row.querySelector('.ingredient-unit-display').textContent.trim();
         
         if (!product || !unit || unit === '-') {
-            alert('Проверьте корректность всех ингредиентов');
+            showNotification('Проверьте корректность всех ингредиентов', 'warning');
             return;
         }
         
@@ -769,7 +943,7 @@ async function saveEditedRecipe() {
         
         // Проверяем количество только для количественных продуктов
         if (productType === 'quantity' && (isNaN(amount) || amount < 0)) {
-            alert('Проверьте корректность количества для количественных ингредиентов');
+            showNotification('Проверьте корректность количества для количественных ингредиентов', 'warning');
             return;
         }
         
@@ -782,7 +956,7 @@ async function saveEditedRecipe() {
     }
     
     if (ingredients.length === 0) {
-        alert('Добавьте хотя бы один ингредиент');
+        showNotification('Добавьте хотя бы один ингредиент', 'warning');
         return;
     }
     
@@ -830,17 +1004,23 @@ async function saveEditedRecipe() {
             // Перезагружаем список рецептов
             await loadAllRecipes();
         } else {
-            alert(result.error || 'Ошибка при сохранении');
+            showNotification(result.error || 'Ошибка при сохранении', 'danger');
         }
     } catch (error) {
         console.error('Ошибка сохранения:', error);
-        alert('Ошибка при сохранении рецепта');
+        showNotification('Ошибка при сохранении рецепта', 'danger');
     }
 }
 
 // Удаление рецепта
 async function deleteRecipe(recipeId, recipeName) {
-    if (!confirm(`Вы уверены, что хотите удалить рецепт "${recipeName}"?\n\nЭто действие нельзя отменить.`)) {
+    const confirmed = await confirmWithModal(
+        'Удаление рецепта',
+        `Вы уверены, что хотите удалить рецепт "${recipeName}"?`,
+        'Это действие нельзя отменить.'
+    );
+    
+    if (!confirmed) {
         return;
     }
     
@@ -855,41 +1035,15 @@ async function deleteRecipe(recipeId, recipeName) {
             showNotification(result.message, 'success');
             await loadAllRecipes();
         } else {
-            alert(result.error || 'Ошибка при удалении');
+            showNotification(result.error || 'Ошибка при удалении', 'danger');
         }
     } catch (error) {
         console.error('Ошибка удаления:', error);
-        alert('Ошибка при удалении рецепта');
+        showNotification('Ошибка при удалении рецепта', 'danger');
     }
 }
 
-// Показ уведомлений
-function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    
-    const icons = {
-        success: 'check-circle',
-        danger: 'exclamation-triangle',
-        warning: 'exclamation-circle',
-        info: 'info-circle'
-    };
-    
-    notification.innerHTML = `
-        <i class="fas fa-${icons[type] || 'info-circle'} me-2"></i>
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.parentNode.removeChild(notification);
-        }
-    }, 4000);
-}
+
 
 // Инициализация страницы
 document.addEventListener('DOMContentLoaded', async function() {
@@ -909,7 +1063,7 @@ async function addSingleMeal() {
         const modalElement = document.getElementById('addMealModal');
         if (!modalElement) {
             console.error('Модальное окно не найдено');
-            alert('Ошибка: модальное окно не найдено');
+            showNotification('Ошибка: модальное окно не найдено', 'danger');
             return;
         }
         
@@ -940,7 +1094,7 @@ async function addSingleMeal() {
         modal.show();
     } catch (error) {
         console.error('Ошибка при открытии модального окна:', error);
-        alert('Ошибка при открытии формы добавления рецепта');
+        showNotification('Ошибка при открытии формы добавления рецепта', 'danger');
     }
 }
 
@@ -1076,14 +1230,23 @@ function populateProductSelect(productSelect) {
 
 // Обработка создания нового продукта из выпадающего списка для нового рецепта
 async function handleNewProductCreation(selectElement) {
-    const productName = prompt('Введите название нового продукта:', '');
+    const productName = await promptWithModal(
+        'Новый продукт',
+        'Введите название нового продукта:',
+        'Например: помидоры, хлеб, масло'
+    );
     if (!productName || !productName.trim()) {
         selectElement.value = ''; // Сбрасываем выбор
         return;
     }
     
     const units = ['шт', 'кг', 'г', 'л', 'мл', 'пакетик', 'ч.л.', 'ст.л.', 'кубик', 'банка', 'упаковка', 'есть/нет'];
-    const unitChoice = prompt(`Выберите единицу измерения для "${productName.trim()}":\n\n${units.map((u, i) => `${i+1}. ${u}`).join('\n')}\n\nВведите номер (1-${units.length}) или название единицы:`, '1');
+    const unitChoice = await promptWithModal(
+        'Единица измерения', 
+        `Выберите единицу измерения для "${productName.trim()}"`,
+        `Доступные варианты: ${units.join(', ')}. Введите номер (1-${units.length}) или название`,
+        '1'
+    );
     
     let selectedUnit;
     if (!isNaN(unitChoice) && unitChoice >= 1 && unitChoice <= units.length) {
@@ -1091,7 +1254,7 @@ async function handleNewProductCreation(selectElement) {
     } else if (units.includes(unitChoice.trim())) {
         selectedUnit = unitChoice.trim();
     } else {
-        alert('Некорректная единица измерения');
+        showNotification('Некорректная единица измерения', 'danger');
         selectElement.value = ''; // Сбрасываем выбор
         return;
     }
@@ -1102,12 +1265,17 @@ async function handleNewProductCreation(selectElement) {
         productType = 'availability';
     } else {
         // Спрашиваем тип продукта только для количественных единиц
-        const productTypeChoice = prompt(`Выберите тип продукта для "${productName.trim()}":\n\n1. Количественный (с указанием количества)\n2. Простое наличие (есть/нет)\n\nВведите номер (1 или 2):`, '1');
+        const productTypeChoice = await promptWithModal(
+            'Тип продукта',
+            `Выберите тип продукта для "${productName.trim()}"`,
+            '1. Количественный (с указанием количества)\n2. Простое наличие (есть/нет)',
+            '1'
+        );
         
         if (productTypeChoice === '2') {
             productType = 'availability';
         } else if (productTypeChoice !== '1') {
-            alert('Некорректный выбор типа продукта');
+            showNotification('Некорректный выбор типа продукта', 'danger');
             selectElement.value = ''; // Сбрасываем выбор
             return;
         }
@@ -1166,12 +1334,12 @@ async function handleNewProductCreation(selectElement) {
             // Показываем уведомление об успешном добавлении
             showNotification(result.message, 'success');
         } else {
-            alert(result.error || 'Ошибка при создании продукта');
+            showNotification(result.error || 'Ошибка при создании продукта', 'danger');
             selectElement.value = ''; // Сбрасываем выбор
         }
     } catch (error) {
         console.error('Ошибка при создании продукта:', error);
-        alert('Ошибка при создании продукта');
+        showNotification('Ошибка при создании продукта', 'danger');
         selectElement.value = ''; // Сбрасываем выбор
     }
 }
@@ -1187,12 +1355,12 @@ function submitMeal() {
     
     // Валидация основных полей
     if (!mealType) {
-        alert('Пожалуйста, выберите прием пищи');
+        showNotification('Пожалуйста, выберите прием пищи', 'warning');
         return;
     }
     
     if (!dishName) {
-        alert('Пожалуйста, введите название блюда');
+        showNotification('Пожалуйста, введите название блюда', 'warning');
         return;
     }
     
@@ -1206,12 +1374,12 @@ function submitMeal() {
         const unit = row.querySelector('.ingredient-unit-display').textContent.trim();
         
         if (!product) {
-            alert('Пожалуйста, выберите продукт');
+            showNotification('Пожалуйста, выберите продукт', 'warning');
             return;
         }
         
         if (!unit || unit === '-') {
-            alert('Пожалуйста, выберите продукт со склада');
+            showNotification('Пожалуйста, выберите продукт со склада', 'warning');
             return;
         }
         
@@ -1222,7 +1390,7 @@ function submitMeal() {
         
         // Проверяем количество только для количественных продуктов
         if (productType === 'quantity' && (isNaN(amount) || amount < 0)) {
-            alert('Пожалуйста, введите корректное количество (неотрицательное число)');
+            showNotification('Пожалуйста, введите корректное количество (неотрицательное число)', 'warning');
             return;
         }
         
@@ -1237,7 +1405,7 @@ function submitMeal() {
     }
     
     if (ingredients.length === 0) {
-        alert('Добавьте хотя бы один ингредиент');
+        showNotification('Добавьте хотя бы один ингредиент', 'warning');
         return;
     }
     
@@ -1301,12 +1469,12 @@ function submitMeal() {
                 await loadAllRecipes();
             }, 500);
         } else {
-            alert(data.error || 'Ошибка при добавлении рецепта');
+            showNotification(data.error || 'Ошибка при добавлении рецепта', 'danger');
         }
     })
     .catch(error => {
         console.error('Ошибка запроса:', error);
-        alert('Ошибка при отправке данных');
+        showNotification('Ошибка при отправке данных', 'danger');
     });
 }
 

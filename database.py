@@ -479,8 +479,37 @@ class MultivarkaDatabase:
         
         return optimized_recipe if optimized_recipe['меню'] else None
     
+    def _get_expiration_priority_bonus(self, expiration_date_str: str) -> float:
+        """Вычисляет бонус приоритета для продукта на основе срока годности"""
+        if not expiration_date_str:
+            return 0  # Нет срока годности - нет бонуса
+        
+        try:
+            from datetime import datetime, date
+            expiration_date = datetime.strptime(expiration_date_str, '%Y-%m-%d').date()
+            today = date.today()
+            days_until_expiration = (expiration_date - today).days
+            
+            if days_until_expiration < 0:
+                # Просроченный продукт - штраф
+                return 50
+            elif days_until_expiration == 0:
+                # Истекает сегодня - максимальный приоритет
+                return -100
+            elif days_until_expiration <= 3:
+                # Скоро истекает - высокий приоритет
+                return -50
+            elif days_until_expiration <= 7:
+                # Истекает на неделе - средний приоритет
+                return -20
+            else:
+                # Свежий продукт - небольшой бонус
+                return -5
+        except ValueError:
+            return 0  # Ошибка парсинга даты - нет бонуса
+
     def _calculate_meal_cost(self, ingredients: List[Dict], warehouse_data: Dict) -> Tuple[float, int]:
-        """Вычисляет стоимость блюда (сколько нужно докупить)"""
+        """Вычисляет стоимость блюда с учётом сроков годности и наличия на складе"""
         total_cost = 0
         missing_ingredients = 0
         
@@ -492,17 +521,31 @@ class MultivarkaDatabase:
             if product in warehouse_data['склад']:
                 available = warehouse_data['склад'][product]['количество']
                 product_type = warehouse_data['склад'][product].get('тип', 'quantity')
+                expiration_date = warehouse_data['склад'][product].get('срок_годности')
+                
+                # Получаем бонус за срок годности
+                expiration_bonus = self._get_expiration_priority_bonus(expiration_date)
                 
                 # Для продуктов с простым наличием
                 if ingredient_type == 'availability' or product_type == 'availability':
                     if available == 0:
                         total_cost += 1  # Нужно купить один продукт
                         missing_ingredients += 1
+                    else:
+                        # Продукт есть - применяем бонус за срок годности
+                        total_cost += expiration_bonus
                 else:
                     # Для обычных продуктов с количеством
                     if available < amount:
-                        total_cost += (amount - available)
+                        shortage = amount - available
+                        total_cost += shortage
                         missing_ingredients += 1
+                        # Частично есть - применяем небольшой бонус за срок годности
+                        if available > 0:
+                            total_cost += expiration_bonus * 0.3
+                    else:
+                        # Продукта достаточно - применяем полный бонус за срок годности
+                        total_cost += expiration_bonus
             else:
                 # Продукта нет на складе
                 if ingredient_type == 'availability':
