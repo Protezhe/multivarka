@@ -1,4 +1,3 @@
-cd /Users/evgeniy/PycharmProjects/multivarka && source venv/bin/activate && cd warehouse_web && python app.py
 
 scp /Users/evgeniy/PycharmProjects/multivarka/multivarka.db root@176.113.82.182:~/multivarka/
 
