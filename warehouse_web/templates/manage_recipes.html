@@ -68,11 +68,52 @@
 
 <!-- Список рецептов -->
 <div id="recipesContainer">
-    <div class="text-center">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Загрузка...</span>
+    <!-- Skeleton loading для рецептов -->
+    <div id="skeletonLoader" class="row">
+        <div class="col-12 col-lg-6 mb-3">
+            <div class="skeleton-card">
+                <div class="skeleton skeleton-title"></div>
+                <div class="skeleton skeleton-text" style="width: 40%;"></div>
+                <div class="skeleton skeleton-text" style="width: 30%;"></div>
+                <div class="d-flex justify-content-between mt-3">
+                    <div class="skeleton" style="width: 80px; height: 32px; border-radius: 6px;"></div>
+                    <div class="skeleton" style="width: 60px; height: 32px; border-radius: 6px;"></div>
+                </div>
+            </div>
         </div>
-        <p class="mt-2">Загружаем рецепты...</p>
+        <div class="col-12 col-lg-6 mb-3">
+            <div class="skeleton-card">
+                <div class="skeleton skeleton-title"></div>
+                <div class="skeleton skeleton-text" style="width: 50%;"></div>
+                <div class="skeleton skeleton-text" style="width: 35%;"></div>
+                <div class="d-flex justify-content-between mt-3">
+                    <div class="skeleton" style="width: 80px; height: 32px; border-radius: 6px;"></div>
+                    <div class="skeleton" style="width: 60px; height: 32px; border-radius: 6px;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6 mb-3">
+            <div class="skeleton-card">
+                <div class="skeleton skeleton-title"></div>
+                <div class="skeleton skeleton-text" style="width: 45%;"></div>
+                <div class="skeleton skeleton-text" style="width: 25%;"></div>
+                <div class="d-flex justify-content-between mt-3">
+                    <div class="skeleton" style="width: 80px; height: 32px; border-radius: 6px;"></div>
+                    <div class="skeleton" style="width: 60px; height: 32px; border-radius: 6px;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6 mb-3">
+            <div class="skeleton-card">
+                <div class="skeleton skeleton-title"></div>
+                <div class="skeleton skeleton-text" style="width: 55%;"></div>
+                <div class="skeleton skeleton-text" style="width: 40%;"></div>
+                <div class="d-flex justify-content-between mt-3">
+                    <div class="skeleton" style="width: 80px; height: 32px; border-radius: 6px;"></div>
+                    <div class="skeleton" style="width: 60px; height: 32px; border-radius: 6px;"></div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -377,22 +418,22 @@ function showNotification(message, type = 'info', duration = 4000) {
     const notification = document.createElement('div');
     notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
     notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px; max-width: 400px;';
-    
+
     const icons = {
         success: 'check-circle',
         danger: 'exclamation-triangle',
         warning: 'exclamation-circle',
         info: 'info-circle'
     };
-    
+
     notification.innerHTML = `
         <i class="fas fa-${icons[type] || 'info-circle'} me-2"></i>
         <span>${message}</span>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
-    
+
     document.body.appendChild(notification);
-    
+
     // Автоматически удаляем через указанное время
     setTimeout(() => {
         if (notification.parentNode) {
@@ -404,8 +445,30 @@ function showNotification(message, type = 'info', duration = 4000) {
             }
         }
     }, duration);
-    
+
     return notification;
+}
+
+// Функция для показа loading состояния на кнопке
+function setButtonLoading(button, loading = true, originalText = null) {
+    if (loading) {
+        if (!originalText) {
+            originalText = button.innerHTML;
+            button.setAttribute('data-original-text', originalText);
+        }
+
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Загрузка...';
+        button.style.opacity = '0.7';
+    } else {
+        button.disabled = false;
+        const originalText = button.getAttribute('data-original-text');
+        if (originalText) {
+            button.innerHTML = originalText;
+        }
+        button.style.opacity = '1';
+        button.removeAttribute('data-original-text');
+    }
 }
 
 // Загрузка продуктов со склада
@@ -439,6 +502,17 @@ async function loadAllRecipes() {
         if (data.success) {
             allRecipes = data.recipes;
             console.log(`Успешно загружено ${data.recipes.length} рецептов`);
+
+            // Скрываем skeleton loader с плавной анимацией
+            const skeletonLoader = document.getElementById('skeletonLoader');
+            if (skeletonLoader) {
+                skeletonLoader.style.transition = 'opacity 0.3s ease-out';
+                skeletonLoader.style.opacity = '0';
+                setTimeout(() => {
+                    skeletonLoader.style.display = 'none';
+                }, 300);
+            }
+
             updateStats(data.recipes);
             displayRecipes(data.recipes);
         } else {
@@ -448,9 +522,12 @@ async function loadAllRecipes() {
         console.error('Ошибка загрузки рецептов:', error);
         document.getElementById('recipesContainer').innerHTML = `
             <div class="empty-state">
-                <i class="fas fa-exclamation-triangle text-danger"></i>
+                <i class="fas fa-exclamation-triangle"></i>
                 <h3>Ошибка загрузки</h3>
                 <p>Не удалось загрузить рецепты: ${error.message}</p>
+                <button class="btn btn-primary btn-custom" onclick="location.reload()">
+                    <i class="fas fa-refresh me-2"></i>Попробовать снова
+                </button>
             </div>
         `;
     }
@@ -494,9 +571,12 @@ function displayRecipes(recipes) {
     if (recipes.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
-                <i class="fas fa-utensils"></i>
+                <i class="fas fa-search"></i>
                 <h3>Рецепты не найдены</h3>
-                <p>Попробуйте изменить параметры поиска</p>
+                <p>Попробуйте изменить параметры поиска или добавьте новые рецепты</p>
+                <button class="btn btn-primary btn-custom" onclick="addSingleMeal()">
+                    <i class="fas fa-plus me-2"></i>Добавить рецепт
+                </button>
             </div>
         `;
         return;
@@ -524,12 +604,12 @@ function displayRecipes(recipes) {
                                 <i class="fas fa-${icon} me-2"></i>${recipe.название}
                             </h5>
                             <div class="recipe-actions">
-                                <button class="btn btn-sm btn-outline-light me-1" 
+                                <button class="btn btn-sm btn-outline-primary me-1" 
                                         onclick="editRecipe(${recipe.id})" 
                                         title="Редактировать">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-sm btn-outline-light" 
+                                <button class="btn btn-sm btn-outline-danger" 
                                         onclick="deleteRecipe(${recipe.id}, '${recipe.название}')" 
                                         title="Удалить">
                                     <i class="fas fa-trash"></i>
@@ -1026,18 +1106,24 @@ async function deleteRecipe(recipeId, recipeName) {
         `Вы уверены, что хотите удалить рецепт "${recipeName}"?`,
         'Это действие нельзя отменить.'
     );
-    
+
     if (!confirmed) {
         return;
     }
-    
+
+    // Находим кнопку, которая вызвала удаление
+    const button = event.target.closest('button');
+    if (button) {
+        setButtonLoading(button, true);
+    }
+
     try {
         const response = await fetch(`/api/recipes/${recipeId}`, {
             method: 'DELETE'
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             showNotification(result.message, 'success');
             await loadAllRecipes();
@@ -1047,6 +1133,10 @@ async function deleteRecipe(recipeId, recipeName) {
     } catch (error) {
         console.error('Ошибка удаления:', error);
         showNotification('Ошибка при удалении рецепта', 'danger');
+    } finally {
+        if (button) {
+            setButtonLoading(button, false);
+        }
     }
 }
 
@@ -1092,11 +1182,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Показываем подробную информацию об ошибке
         document.getElementById('recipesContainer').innerHTML = `
             <div class="empty-state">
-                <i class="fas fa-exclamation-triangle text-danger"></i>
+                <i class="fas fa-exclamation-triangle"></i>
                 <h3>Ошибка загрузки данных</h3>
                 <p><strong>Детали ошибки:</strong> ${error.message}</p>
                 <p><small class="text-muted">Проверьте консоль браузера для дополнительной информации</small></p>
-                <button class="btn btn-primary mt-3" onclick="location.reload()">
+                <button class="btn btn-primary btn-custom mt-3" onclick="location.reload()">
                     <i class="fas fa-refresh me-2"></i>Перезагрузить страницу
                 </button>
             </div>

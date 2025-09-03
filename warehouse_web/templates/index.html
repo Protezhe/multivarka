@@ -12,9 +12,6 @@
                 <i class="fas fa-utensils me-2"></i>Сегодняшний рецепт
             </h2>
             <div class="recipe-actions d-flex flex-column flex-sm-row gap-2">
-                <button class="btn btn-primary" onclick="refreshRecipe()">
-                    <i class="fas fa-refresh me-2"></i>Новый рецепт
-                </button>
                 <button class="btn btn-success" onclick="optimizeRecipe()">
                     <i class="fas fa-magic me-2"></i>Подобрать рецепт
                 </button>
@@ -37,17 +34,17 @@
                                     </h5>
                                     <p class="meal-dish">{{ meal_data.блюдо }}</p>
                                 </div>
-                                <div class="d-flex gap-1">
-                                    <button class="btn btn-sm btn-outline-primary" 
-                                            onclick="replaceMeal('{{ meal_name }}')" 
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-outline-primary meal-control-btn"
+                                            onclick="replaceMeal('{{ meal_name }}')"
                                             title="Заменить блюдо">
-                                        <i class="fas fa-sync-alt"></i>
+                                        <i class="fas fa-sync-alt fa-lg"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-outline-warning" 
-                                            onclick="toggleSkipCooking('{{ meal_name }}')" 
+                                    <button class="btn btn-outline-warning meal-control-btn"
+                                            onclick="toggleSkipCooking('{{ meal_name }}')"
                                             title="{% if meal_data.get('skip_cooking', False) %}Включить приготовление{% else %}Не готовить{% endif %}"
                                             id="skip-btn-{{ meal_name }}">
-                                        <i class="fas {% if meal_data.get('skip_cooking', False) %}fa-play{% else %}fa-pause{% endif %}"></i>
+                                        <i class="fas {% if meal_data.get('skip_cooking', False) %}fa-play{% else %}fa-pause{% endif %} fa-lg"></i>
                                     </button>
                                 </div>
                             </div>
@@ -139,14 +136,6 @@
                     </div>
                 </div>
                 {% endfor %}
-            {% else %}
-                <div class="col-12">
-                    <div class="empty-state">
-                        <i class="fas fa-check-circle text-success"></i>
-                        <h3>Все продукты есть на складе!</h3>
-                        <p>🎉 Не нужно ничего покупать</p>
-                    </div>
-                </div>
             {% endif %}
         </div>
 
@@ -197,15 +186,7 @@
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        {% if meal_data.get('готово', False) %}
-                                            <div class="d-flex align-items-center justify-content-center h-100">
-                                                <div class="text-center">
-                                                    <span class="badge bg-success fs-5 p-3">
-                                                        <i class="fas fa-check-circle me-2"></i>Готово к подаче
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        {% elif 'инструкции' in meal_data %}
+                                        {% if 'инструкции' in meal_data %}
                                             <div class="instructions-list mb-4">
                                                 <h5><i class="fas fa-clipboard-list me-2"></i>Инструкции:</h5>
                                                 <ol class="ps-3">
@@ -218,11 +199,17 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Кнопка приготовления (только для блюд, которые нужно готовить) -->
+                                <!-- Кнопка приготовления/съедения -->
                                 {% if not meal_data.get('готово', False) %}
                                 <div class="d-grid">
                                     <button class="btn btn-success btn-custom btn-lg" onclick="cookMeal('{{ meal_name }}')">
                                         <i class="fas fa-fire me-2"></i>Приготовлено
+                                    </button>
+                                </div>
+                                {% else %}
+                                <div class="d-grid">
+                                    <button class="btn btn-success btn-custom btn-lg" onclick="eatMeal('{{ meal_name }}')">
+                                        <i class="fas fa-utensils me-2"></i>Съел
                                     </button>
                                 </div>
                                 {% endif %}
@@ -368,10 +355,15 @@
     <div class="empty-state">
         <i class="fas fa-box-open"></i>
         <h3>Склад пуст</h3>
-        <p>Обновите склад на основе рецептов, чтобы начать готовить с мультиваркой</p>
-        <button type="button" class="btn btn-add" onclick="updateProductsAjax()">
-            <i class="fas fa-sync-alt me-2"></i>Обновить продукты
-        </button>
+        <p>Добавьте рецепты и обновите склад, чтобы начать готовить с мультиваркой</p>
+        <div class="d-flex gap-3 justify-content-center flex-wrap">
+            <a href="{{ url_for('manage_recipes') }}" class="btn btn-primary btn-custom">
+                <i class="fas fa-plus me-2"></i>Добавить рецепты
+            </a>
+            <button type="button" class="btn btn-add" onclick="updateProductsAjax()">
+                <i class="fas fa-sync-alt me-2"></i>Обновить склад
+            </button>
+        </div>
     </div>
 {% endif %}
 
@@ -399,7 +391,7 @@ function cookMeal(mealName) {
     .then(data => {
         if (data.success) {
             // Уведомление убрано по запросу пользователя
-            
+
             // Обновляем интерфейс без перезагрузки страницы
             setTimeout(() => {
                 // Обновляем кнопку приготовления
@@ -409,33 +401,70 @@ function cookMeal(mealName) {
                     cookButton.className = 'btn btn-success btn-custom btn-lg';
                     cookButton.disabled = true;
                 }
-                
+
                 // Обновляем карточку блюда
                 const mealCard = document.querySelector(`.${mealName}`);
                 if (mealCard) {
                     mealCard.classList.add('ready-meal');
                 }
-                
+
                 // Обновляем детальную карточку рецепта
                 const recipeCard = document.getElementById(`recipe-${mealName}`);
                 if (recipeCard) {
                     recipeCard.classList.add('ready-meal');
-                    const readySection = recipeCard.querySelector('.col-md-6:last-child');
-                    if (readySection) {
-                        readySection.innerHTML = `
-                            <div class="d-flex align-items-center justify-content-center h-100">
-                                <div class="text-center">
-                                    <span class="badge bg-success fs-5 p-3">
-                                        <i class="fas fa-check-circle me-2"></i>Готово к подаче
-                                    </span>
-                                </div>
-                            </div>
+                    // Обновляем кнопку приготовления на кнопку "Съел"
+                    const cookButton = recipeCard.querySelector(`button[onclick="cookMeal('${mealName}')"]`);
+                    if (cookButton) {
+                        cookButton.outerHTML = `
+                            <button class="btn btn-success btn-custom btn-lg" onclick="eatMeal('${mealName}')">
+                                <i class="fas fa-utensils me-2"></i>Съел
+                            </button>
                         `;
                     }
                 }
             }, 1000);
         } else {
             console.error('Ошибка при приготовлении:', data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка запроса:', error);
+    });
+}
+
+// Функция для отметки блюда как съеденного
+function eatMeal(mealName) {
+    fetch('/api/cook_meal', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            meal_name: mealName
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Уведомление убрано по запросу пользователя
+
+            // Обновляем интерфейс без перезагрузки страницы
+            setTimeout(() => {
+                // Заменяем кнопку "Съел" на сообщение об успешном завершении
+                const recipeCard = document.getElementById(`recipe-${mealName}`);
+                if (recipeCard) {
+                    const eatButton = recipeCard.querySelector(`button[onclick="eatMeal('${mealName}')"]`);
+                    if (eatButton) {
+                        eatButton.outerHTML = `
+                            <div class="text-center text-muted small">
+                                Продукты удалены из холодильника
+                            </div>
+                        `;
+                    }
+                }
+            }, 1000);
+        } else {
+            console.error('Ошибка при отметке блюда как съеденного:', data.error);
         }
     })
     .catch(error => {
@@ -945,26 +974,33 @@ async function createRecipeCard(mealType) {
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                ${mealData.готово ? `
-                                    <div class="d-flex align-items-center justify-content-center h-100">
-                                        <div class="text-center">
-                                            <span class="badge bg-success fs-5 p-3">
-                                                <i class="fas fa-check-circle me-2"></i>Готово к подаче
-                                            </span>
-                                        </div>
-                                    </div>
-                                ` : `
-                                    <div class="instructions-list">
-                                        <h5><i class="fas fa-list-ol me-2"></i>Приготовление:</h5>
-                                        <ol class="mb-4">
-                                            ${mealData.инструкции ? mealData.инструкции.map(instruction => `
-                                                <li class="mb-1">${instruction}</li>
-                                            `).join('') : ''}
+                                ${mealData.инструкции ? `
+                                    <div class="instructions-list mb-4">
+                                        <h5><i class="fas fa-clipboard-list me-2"></i>Инструкции:</h5>
+                                        <ol class="ps-3">
+                                            ${mealData.инструкции.map(instruction => `
+                                                <li class="mb-2">${instruction}</li>
+                                            `).join('')}
                                         </ol>
                                     </div>
-                                `}
+                                ` : ''}
                             </div>
                         </div>
+
+                        <!-- Кнопка приготовления/съедения -->
+                        ${mealData.готово ? `
+                        <div class="d-grid">
+                            <button class="btn btn-success btn-custom btn-lg" onclick="eatMeal('${mealType}')">
+                                <i class="fas fa-utensils me-2"></i>Съел
+                            </button>
+                        </div>
+                        ` : `
+                        <div class="d-grid">
+                            <button class="btn btn-success btn-custom btn-lg" onclick="cookMeal('${mealType}')">
+                                <i class="fas fa-fire me-2"></i>Приготовлено
+                            </button>
+                        </div>
+                        `}
                     </div>
                 </div>
             </div>
@@ -1038,12 +1074,12 @@ function updateMealCard(mealType, mealData) {
                 if (skipStatus) {
                     icon.className = 'fas fa-play';
                     skipButton.title = 'Включить приготовление';
-                    skipButton.className = 'btn btn-sm btn-outline-success';
+                    skipButton.className = 'btn btn-outline-success meal-control-btn';
                     card.classList.add('meal-card-skipped');
                 } else {
                     icon.className = 'fas fa-pause';
                     skipButton.title = 'Не готовить';
-                    skipButton.className = 'btn btn-sm btn-outline-warning';
+                    skipButton.className = 'btn btn-outline-warning meal-control-btn';
                     card.classList.remove('meal-card-skipped');
                 }
             }
@@ -1112,8 +1148,20 @@ function updateMealCard(mealType, mealData) {
                     instructionsList.appendChild(li);
                 });
             }
-                }
-        
+        }
+
+        // Обновляем кнопку для готовых блюд
+        if (mealData.готово) {
+            const cookButton = recipeCard.querySelector(`button[onclick="cookMeal('${mealType}')"]`);
+            if (cookButton) {
+                cookButton.outerHTML = `
+                    <button class="btn btn-success btn-custom btn-lg" onclick="eatMeal('${mealType}')">
+                        <i class="fas fa-utensils me-2"></i>Съел
+                    </button>
+                `;
+            }
+        }
+
         // Синхронизируем основную карточку рецепта (скрываем/показываем при skip_cooking)
         syncRecipeCardVisibility(mealType, mealData.skip_cooking || false);
     }
@@ -1134,16 +1182,8 @@ function updateShoppingList(neededProducts) {
     if (!shoppingSection) return;
     
     if (!neededProducts || Object.keys(neededProducts).length === 0) {
-        // Если продуктов не нужно, показываем сообщение
-        shoppingSection.innerHTML = `
-            <div class="col-12">
-                <div class="empty-state">
-                    <i class="fas fa-check-circle text-success"></i>
-                    <h3>Все продукты есть на складе!</h3>
-                    <p>🎉 Не нужно ничего покупать</p>
-                </div>
-            </div>
-        `;
+        // Если продуктов не нужно, просто очищаем секцию
+        shoppingSection.innerHTML = '';
         return;
     }
     
@@ -1260,11 +1300,11 @@ function toggleSkipCooking(mealType) {
             if (newStatus) {
                 icon.className = 'fas fa-play';
                 button.title = 'Включить приготовление';
-                button.className = 'btn btn-sm btn-outline-success';
+                button.className = 'btn btn-outline-success meal-control-btn';
             } else {
                 icon.className = 'fas fa-pause';
                 button.title = 'Не готовить';
-                button.className = 'btn btn-sm btn-outline-warning';
+                button.className = 'btn btn-outline-warning meal-control-btn';
             }
             
             // Обновляем стиль карточки
@@ -1745,61 +1785,7 @@ function updateWarehouseInputsQuietly(skladData) {
     }
 }
 
-// Функция для обновления рецепта (создание нового случайного рецепта)
-async function refreshRecipe() {
-    const button = event.target.closest('button');
-    
-    // Если кнопка уже заблокирована, не выполняем действие
-    if (button.disabled) {
-        return;
-    }
-    
-    const confirmed = await confirmWithModal(
-        'Обновление рецепта',
-        'Хотите создать новый случайный рецепт?',
-        'Текущий рецепт будет заменен на новый с другими блюдами'
-    );
-    
-    if (!confirmed) {
-        return;
-    }
-    
-    const originalContent = button.innerHTML;
-    button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Создаем...';
-    button.disabled = true;
-    
-    fetch('/api/refresh_recipe', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification(data.message, 'success');
-            // Перезагружаем страницу для отображения нового рецепта
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
-        } else {
-            console.error('Ошибка при обновлении рецепта:', data.error);
-            showNotification('Ошибка при создании нового рецепта', 'danger');
-            
-            // Возвращаем кнопку в исходное состояние при ошибке
-            button.innerHTML = originalContent;
-            button.disabled = false;
-        }
-    })
-    .catch(error => {
-        console.error('Ошибка запроса:', error);
-        showNotification('Ошибка при создании нового рецепта', 'danger');
-        
-        // Возвращаем кнопку в исходное состояние при ошибке
-        button.innerHTML = originalContent;
-        button.disabled = false;
-    });
-}
+
 
 // SPA навигация отключена для корректной инициализации скриптов страниц
 

@@ -108,13 +108,21 @@ class MultivarkaDatabase:
             with self.lock:
                 conn = self.get_connection()
                 cursor = conn.cursor()
-                
-                cursor.execute("""
-                    UPDATE warehouse 
-                    SET quantity = ?, updated_at = CURRENT_TIMESTAMP 
-                    WHERE product_name = ?
-                """, (quantity, product_name))
-                
+
+                # Если количество становится 0, очищаем срок годности
+                if quantity == 0:
+                    cursor.execute("""
+                        UPDATE warehouse
+                        SET quantity = 0, expiration_date = NULL, updated_at = CURRENT_TIMESTAMP
+                        WHERE product_name = ?
+                    """, (product_name,))
+                else:
+                    cursor.execute("""
+                        UPDATE warehouse
+                        SET quantity = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE product_name = ?
+                    """, (quantity, product_name))
+
                 conn.commit()
                 success = cursor.rowcount > 0
                 conn.close()
@@ -159,24 +167,28 @@ class MultivarkaDatabase:
                     # Для продуктов с типом 'availability' просто устанавливаем наличие
                     if product_type == 'availability' or row['product_type'] == 'availability':
                         cursor.execute("""
-                            UPDATE warehouse 
-                            SET quantity = 1, product_type = 'availability', expiration_date = ?, updated_at = CURRENT_TIMESTAMP 
+                            UPDATE warehouse
+                            SET quantity = 1, product_type = 'availability', expiration_date = ?, updated_at = CURRENT_TIMESTAMP
                             WHERE product_name = ?
                         """, (expiration_date, product_name))
                     else:
                         # Увеличиваем количество для обычных продуктов
                         new_quantity = row['quantity'] + quantity
+                        # Если итоговое количество равно 0, очищаем срок годности
+                        final_expiration_date = expiration_date if new_quantity > 0 else None
                         cursor.execute("""
-                            UPDATE warehouse 
-                            SET quantity = ?, expiration_date = ?, updated_at = CURRENT_TIMESTAMP 
+                            UPDATE warehouse
+                            SET quantity = ?, expiration_date = ?, updated_at = CURRENT_TIMESTAMP
                             WHERE product_name = ?
-                        """, (new_quantity, expiration_date, product_name))
+                        """, (new_quantity, final_expiration_date, product_name))
                 else:
                     # Добавляем новый продукт
+                    # Если количество равно 0, очищаем срок годности
+                    final_expiration_date = expiration_date if quantity > 0 else None
                     cursor.execute("""
                         INSERT INTO warehouse (product_name, quantity, unit, product_type, expiration_date)
                         VALUES (?, ?, ?, ?, ?)
-                    """, (product_name, quantity, unit, product_type, expiration_date))
+                    """, (product_name, quantity, unit, product_type, final_expiration_date))
                 
                 conn.commit()
                 conn.close()
@@ -609,21 +621,23 @@ class MultivarkaDatabase:
     def _consume_ingredient(self, cursor, ingredient: Dict):
         """Уменьшает количество ингредиента на складе"""
         ingredient_type = ingredient.get('тип', 'quantity')
-        
+
         if ingredient_type == 'availability':
-            # Для продуктов с простым наличием просто сбрасываем в 0
+            # Для продуктов с простым наличием сбрасываем в 0 и очищаем срок годности
             cursor.execute("""
-                UPDATE warehouse 
-                SET quantity = 0, updated_at = CURRENT_TIMESTAMP
+                UPDATE warehouse
+                SET quantity = 0, expiration_date = NULL, updated_at = CURRENT_TIMESTAMP
                 WHERE product_name = ?
             """, (ingredient['продукт'],))
         else:
             # Для обычных продуктов уменьшаем количество
             cursor.execute("""
-                UPDATE warehouse 
-                SET quantity = MAX(0, quantity - ?), updated_at = CURRENT_TIMESTAMP
+                UPDATE warehouse
+                SET quantity = MAX(0, quantity - ?),
+                    expiration_date = CASE WHEN MAX(0, quantity - ?) = 0 THEN NULL ELSE expiration_date END,
+                    updated_at = CURRENT_TIMESTAMP
                 WHERE product_name = ?
-            """, (ingredient['количество'], ingredient['продукт']))
+            """, (ingredient['количество'], ingredient['количество'], ingredient['продукт']))
     
     def get_recipe_by_id(self, recipe_id: int) -> Optional[Dict]:
         """Возвращает рецепт по ID"""

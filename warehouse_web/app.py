@@ -358,17 +358,23 @@ def api_update_product(product):
         data = request.get_json()
         quantity = float(data.get('quantity', 0))
         expiration_date = data.get('expiration_date')
-        
+
         if quantity < 0:
             return jsonify({'error': 'Количество не может быть отрицательным'}), 400
-        
+
+        # Если количество устанавливается в 0, всегда очищаем срок годности
+        if quantity == 0:
+            final_expiration_date = None
+        else:
+            final_expiration_date = expiration_date
+
         if db.update_product_quantity(product, quantity):
             # Обновляем срок годности (включая null для очистки)
-            db.update_product_expiration(product, expiration_date)
+            db.update_product_expiration(product, final_expiration_date)
             return jsonify({'success': True, 'message': f'Количество {product} обновлено'})
         else:
             return jsonify({'error': 'Продукт не найден'}), 404
-            
+
     except (ValueError, KeyError):
         return jsonify({'error': 'Некорректные данные'}), 400
     except Exception as e:
