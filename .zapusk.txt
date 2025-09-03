@@ -1,0 +1,12 @@
+cd /Users/evgeniy/PycharmProjects/multivarka && source venv/bin/activate && cd warehouse_web && python app.py
+
+scp /Users/evgeniy/PycharmProjects/multivarka/multivarka.db root@176.113.82.182:~/multivarka/
+
+nohup ./start_server.sh > start_server.log 2>&1 &
+
+cd multivarka
+git pull origin main
+
+ssh root@176.113.82.182
+
+6KzM8dgoUZ

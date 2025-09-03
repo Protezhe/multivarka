@@ -1801,60 +1801,7 @@ async function refreshRecipe() {
     });
 }
 
-// Улучшенная SPA навигация
-function navigateToPage(url, pushState = true) {
-    // Показываем индикатор загрузки
-    const loadingIndicator = showLoadingIndicator();
-    
-    fetch(url, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => {
-        if (response.ok) {
-            return response.text();
-        }
-        throw new Error('Network response was not ok');
-    })
-    .then(html => {
-        // Парсим HTML ответ
-        const parser = new DOMParser();
-        const newDoc = parser.parseFromString(html, 'text/html');
-        
-        // Извлекаем новый контент
-        const newContent = newDoc.querySelector('.main-container');
-        const currentContainer = document.querySelector('.main-container');
-        
-        if (newContent && currentContainer) {
-            // Плавный переход
-            currentContainer.style.opacity = '0.5';
-            
-            setTimeout(() => {
-                currentContainer.innerHTML = newContent.innerHTML;
-                currentContainer.style.opacity = '1';
-                
-                // Запускаем инициализацию для новой страницы
-                initializePage();
-                
-                // Обновляем URL
-                if (pushState) {
-                    history.pushState({}, '', url);
-                }
-                
-                hideLoadingIndicator(loadingIndicator);
-            }, 300);
-        }
-    })
-    .catch(error => {
-        console.error('Ошибка навигации:', error);
-        showNotification('Ошибка при загрузке страницы', 'danger');
-        hideLoadingIndicator(loadingIndicator);
-        
-        // Fallback к обычной навигации
-        window.location.href = url;
-    });
-}
+// SPA навигация отключена для корректной инициализации скриптов страниц
 
 // Показать индикатор загрузки
 function showLoadingIndicator() {

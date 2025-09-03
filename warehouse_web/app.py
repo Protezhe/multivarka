@@ -13,7 +13,8 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from database import db
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-here'  # В продакшене использовать безопасный ключ
+# Загружаем SECRET_KEY из переменных окружения; для разработки используем безопасный дефолт
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-only-secret-key')
 
 # Добавляем фильтр для форматирования чисел
 @app.template_filter('format_number')
@@ -236,18 +237,30 @@ def update_products():
         
         # Добавляем нужные продукты
         for product in products_to_add:
-            db.add_product_to_warehouse(product, 0, products_from_recipes[product])
-            changes_made.append(f"➕ Добавлен: {product} ({products_from_recipes[product]})")
+            info = products_from_recipes[product]
+            unit = info.get('unit') if isinstance(info, dict) else info
+            ingredient_type = info.get('ingredient_type', 'quantity') if isinstance(info, dict) else 'quantity'
+            db.add_product_to_warehouse(product, 0, unit, ingredient_type)
+            changes_made.append(f"➕ Добавлен: {product} ({unit}, тип: {ingredient_type})")
         
-        # Обновляем единицы измерения для существующих продуктов
+        # Обновляем единицы измерения/тип для существующих продуктов
         for product in products_to_update_units:
-            if sklad['склад'][product]['единица'] != products_from_recipes[product]:
-                old_unit = sklad['склад'][product]['единица']
-                # Обновляем единицу через обновление всего продукта
-                current_quantity = sklad['склад'][product]['количество']
+            info = products_from_recipes[product]
+            new_unit = info.get('unit') if isinstance(info, dict) else info
+            new_type = info.get('ingredient_type', 'quantity') if isinstance(info, dict) else 'quantity'
+            current = sklad['склад'][product]
+            old_unit = current.get('единица')
+            old_type = current.get('тип', 'quantity')
+            if old_unit != new_unit or old_type != new_type:
+                current_quantity = current.get('количество', 0)
                 db.delete_product_from_warehouse(product)
-                db.add_product_to_warehouse(product, current_quantity, products_from_recipes[product])
-                changes_made.append(f"🔄 Обновлена единица: {product} ({old_unit} → {products_from_recipes[product]})")
+                db.add_product_to_warehouse(product, current_quantity, new_unit, new_type)
+                msg_parts = []
+                if old_unit != new_unit:
+                    msg_parts.append(f"единица: {old_unit} → {new_unit}")
+                if old_type != new_type:
+                    msg_parts.append(f"тип: {old_type} → {new_type}")
+                changes_made.append(f"🔄 Обновлен {product} ({', '.join(msg_parts)})")
         
         if changes_made:
             changes_text = "\n".join(changes_made)
@@ -333,7 +346,8 @@ def api_products():
         products.append({
             'name': product_name,
             'unit': product_data.get('единица', ''),
-            'quantity': product_data.get('количество', 0)
+            'quantity': product_data.get('количество', 0),
+            'type': product_data.get('тип', 'quantity')
         })
     return jsonify(products)
 
@@ -768,5 +782,4 @@ def manage_recipes():
     """Страница управления рецептами"""
     return render_template('manage_recipes.html')
 
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=8081)
+# Запуск приложения должен осуществляться через run.py

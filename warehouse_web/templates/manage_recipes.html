@@ -423,15 +423,22 @@ async function loadWarehouseProducts() {
 // Загрузка всех рецептов
 async function loadAllRecipes() {
     try {
-        console.log('Загружаем рецепты...');
+        console.log('Начинаем загрузку рецептов...');
+        console.log('Делаем запрос к /api/recipes');
+
         const response = await fetch('/api/recipes');
+        console.log('Получили ответ от сервера, статус:', response.status);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ошибка: ${response.status}`);
+        }
+
         const data = await response.json();
-        
-        console.log('Ответ API:', data);
-        
+        console.log('Парсили JSON ответ:', data);
+
         if (data.success) {
             allRecipes = data.recipes;
-            console.log('Рецептов загружено:', data.recipes.length);
+            console.log(`Успешно загружено ${data.recipes.length} рецептов`);
             updateStats(data.recipes);
             displayRecipes(data.recipes);
         } else {
@@ -1047,9 +1054,95 @@ async function deleteRecipe(recipeId, recipeName) {
 
 // Инициализация страницы
 document.addEventListener('DOMContentLoaded', async function() {
-    await loadWarehouseProducts();
-    await loadAllRecipes();
+    console.log('=== ДОМ ЗАГРУЖЕН ===');
+    console.log('Текущее время:', new Date().toISOString());
+    console.log('URL страницы:', window.location.href);
+    console.log('User Agent:', navigator.userAgent);
+
+    // Небольшая задержка для обеспечения полной загрузки всех ресурсов
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    try {
+        console.log('🔄 Начинаем загрузку данных...');
+
+        // Проверяем доступность API
+        console.log('Проверяем доступность API...');
+        const testResponse = await fetch('/api/recipes');
+        console.log('Ответ сервера:', testResponse.status);
+
+        if (!testResponse.ok) {
+            throw new Error(`Сервер вернул ошибку: ${testResponse.status}`);
+        }
+
+        console.log('✅ API доступен, загружаем продукты со склада...');
+        await loadWarehouseProducts();
+
+        console.log('✅ Продукты загружены, загружаем рецепты...');
+        await loadAllRecipes();
+
+        console.log('🎉 Инициализация успешно завершена');
+
+        // Отмечаем успешную инициализацию
+        window.recipesInitialized = true;
+
+    } catch (error) {
+        console.error('❌ Критическая ошибка инициализации:', error);
+        console.error('Стек ошибки:', error.stack);
+
+        // Показываем подробную информацию об ошибке
+        document.getElementById('recipesContainer').innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-exclamation-triangle text-danger"></i>
+                <h3>Ошибка загрузки данных</h3>
+                <p><strong>Детали ошибки:</strong> ${error.message}</p>
+                <p><small class="text-muted">Проверьте консоль браузера для дополнительной информации</small></p>
+                <button class="btn btn-primary mt-3" onclick="location.reload()">
+                    <i class="fas fa-refresh me-2"></i>Перезагрузить страницу
+                </button>
+            </div>
+        `;
+    }
 });
+
+// Дополнительная инициализация при полной загрузке страницы
+window.addEventListener('load', function() {
+    console.log('=== СТРАНИЦА ПОЛНОСТЬЮ ЗАГРУЖЕНА ===');
+    console.log('Все ресурсы загружены, выполняем финальную инициализацию...');
+
+    // Проверяем, была ли уже выполнена инициализация
+    if (window.recipesInitialized) {
+        console.log('Инициализация уже выполнена, повтор не требуется');
+        return;
+    }
+
+    // Если по какой-то причине DOMContentLoaded не сработал, выполняем инициализацию здесь
+    console.log('Выполняем резервную инициализацию...');
+    initializeRecipesPage();
+});
+
+// Функция для инициализации страницы рецептов
+async function initializeRecipesPage() {
+    if (window.recipesInitialized) {
+        console.log('Инициализация уже выполнена');
+        return;
+    }
+
+    try {
+        console.log('🚀 Запуск резервной инициализации...');
+
+        // Отмечаем, что инициализация начата
+        window.recipesInitialized = true;
+
+        // Загружаем данные
+        await loadWarehouseProducts();
+        await loadAllRecipes();
+
+        console.log('✅ Резервная инициализация завершена');
+
+    } catch (error) {
+        console.error('❌ Ошибка резервной инициализации:', error);
+    }
+}
 
 // === ФУНКЦИИ ДЛЯ ДОБАВЛЕНИЯ НОВЫХ РЕЦЕПТОВ ===
 

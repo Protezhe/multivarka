@@ -556,20 +556,26 @@ class MultivarkaDatabase:
         
         return total_cost, missing_ingredients
     
-    def get_all_products_from_recipes(self) -> Dict[str, str]:
-        """Возвращает все продукты, используемые в рецептах, и их единицы измерения"""
+    def get_all_products_from_recipes(self) -> Dict[str, Dict[str, str]]:
+        """Возвращает все продукты, используемые в рецептах, с единицами и типом ингредиента"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
-            SELECT DISTINCT product_name, unit 
+            SELECT product_name, unit, ingredient_type
             FROM recipe_ingredients
+            GROUP BY product_name, unit, ingredient_type
             ORDER BY product_name
         """)
         
         products = {}
         for row in cursor.fetchall():
-            products[row['product_name']] = row['unit']
+            # если продукт встречается с разными типами/единицами, берём первую встречу
+            if row['product_name'] not in products:
+                products[row['product_name']] = {
+                    'unit': row['unit'],
+                    'ingredient_type': row['ingredient_type'] or 'quantity'
+                }
         
         conn.close()
         return products
