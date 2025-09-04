@@ -780,6 +780,109 @@ def api_delete_recipe(recipe_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/recipes/export')
+def api_export_recipes():
+    """API endpoint для экспорта всех рецептов в JSON"""
+    try:
+        recipes = db.get_all_recipes_with_info()
+        
+        # Формируем данные для экспорта
+        export_data = {
+            "export_info": {
+                "export_date": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "total_recipes": len(recipes),
+                "version": "1.0"
+            },
+            "recipes": []
+        }
+        
+        # Добавляем полную информацию о каждом рецепте
+        for recipe_info in recipes:
+            full_recipe = db.get_recipe_by_id(recipe_info['id'])
+            if full_recipe:
+                export_data["recipes"].append(full_recipe)
+        
+        return jsonify({
+            'success': True,
+            'data': export_data
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/recipes/import', methods=['POST'])
+def api_import_recipes():
+    """API endpoint для импорта рецептов из JSON"""
+    try:
+        # Проверяем, что данные переданы
+        if not request.json:
+            return jsonify({'error': 'Не переданы данные для импорта'}), 400
+        
+        import_data = request.json
+        
+        # Валидация структуры данных
+        if 'recipes' not in import_data:
+            return jsonify({'error': 'Неверный формат данных: отсутствует секция "recipes"'}), 400
+        
+        recipes_to_import = import_data['recipes']
+        if not isinstance(recipes_to_import, list):
+            return jsonify({'error': 'Неверный формат данных: "recipes" должен быть массивом'}), 400
+        
+        imported_count = 0
+        errors = []
+        
+        for i, recipe_data in enumerate(recipes_to_import):
+            try:
+                # Валидация обязательных полей
+                if not recipe_data.get('название'):
+                    errors.append(f"Рецепт #{i+1}: отсутствует название")
+                    continue
+                
+                if not recipe_data.get('тип_приема'):
+                    errors.append(f"Рецепт #{i+1}: отсутствует тип приема пищи")
+                    continue
+                
+                # Формируем данные для добавления
+                meal_data = {
+                    'блюдо': recipe_data['название'],
+                    'готово': recipe_data.get('готово', False)
+                }
+                
+                # Добавляем ингредиенты если есть
+                if 'ингредиенты' in recipe_data and recipe_data['ингредиенты']:
+                    meal_data['ингредиенты'] = recipe_data['ингредиенты']
+                
+                # Добавляем инструкции если есть
+                if 'инструкции' in recipe_data and recipe_data['инструкции']:
+                    meal_data['инструкции'] = recipe_data['инструкции']
+                
+                # Сохраняем рецепт
+                if db.add_single_recipe(recipe_data['тип_приема'], meal_data):
+                    imported_count += 1
+                else:
+                    errors.append(f"Рецепт #{i+1} '{recipe_data['название']}': ошибка сохранения")
+                    
+            except Exception as e:
+                errors.append(f"Рецепт #{i+1}: {str(e)}")
+        
+        # Формируем ответ
+        message = f"Импорт завершен. Добавлено рецептов: {imported_count}"
+        if errors:
+            message += f". Ошибок: {len(errors)}"
+        
+        response_data = {
+            'success': True,
+            'message': message,
+            'imported_count': imported_count,
+            'total_count': len(recipes_to_import),
+            'errors': errors
+        }
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # === СТРАНИЦЫ ===
 
 

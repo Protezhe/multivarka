@@ -117,6 +117,47 @@
     </div>
 </div>
 
+<!-- Секция экспорта и импорта рецептов -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="product-card">
+            <div class="product-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-file-export me-2"></i>Экспорт и импорт рецептов
+                </h5>
+            </div>
+            <div class="product-body">
+                <div class="row g-3">
+                    <!-- Экспорт рецептов -->
+                    <div class="col-md-6">
+                        <div class="d-grid">
+                            <button class="btn btn-outline-success" onclick="exportRecipes()">
+                                <i class="fas fa-download me-2"></i>Скачать все рецепты (JSON)
+                            </button>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            Скачает все рецепты в формате JSON для резервного копирования или обмена
+                        </small>
+                    </div>
+                    
+                    <!-- Импорт рецептов -->
+                    <div class="col-md-6">
+                        <div class="d-grid">
+                            <input type="file" id="importFileInput" accept=".json" style="display: none;" onchange="handleFileImport(event)">
+                            <button class="btn btn-outline-primary" onclick="document.getElementById('importFileInput').click()">
+                                <i class="fas fa-upload me-2"></i>Загрузить рецепты из JSON
+                            </button>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            Загрузит рецепты из JSON файла и добавит их в базу данных
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 <!-- Модальное окно для редактирования рецепта -->
@@ -1814,6 +1855,133 @@ function submitMeal() {
         console.error('Ошибка запроса:', error);
         showNotification('Ошибка при отправке данных', 'danger');
     });
+}
+
+// === ФУНКЦИИ ЭКСПОРТА И ИМПОРТА РЕЦЕПТОВ ===
+
+// Экспорт рецептов в JSON
+async function exportRecipes() {
+    try {
+        showNotification('Подготовка экспорта рецептов...', 'info');
+        
+        const response = await fetch('/api/recipes/export');
+        const data = await response.json();
+        
+        if (data.success) {
+            // Создаем файл для скачивания
+            const exportData = data.data;
+            const jsonString = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            // Создаем ссылку для скачивания
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `recipes_export_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification(`Экспорт завершен! Скачано ${exportData.export_info.total_recipes} рецептов`, 'success');
+        } else {
+            showNotification('Ошибка экспорта: ' + (data.error || 'Неизвестная ошибка'), 'danger');
+        }
+    } catch (error) {
+        console.error('Ошибка экспорта:', error);
+        showNotification('Ошибка при экспорте рецептов', 'danger');
+    }
+}
+
+// Обработка загрузки файла для импорта
+function handleFileImport(event) {
+    const file = event.target.files[0];
+    if (!file) {
+        return;
+    }
+    
+    // Проверяем тип файла
+    if (!file.name.toLowerCase().endsWith('.json')) {
+        showNotification('Пожалуйста, выберите JSON файл', 'warning');
+        return;
+    }
+    
+    // Проверяем размер файла (максимум 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+        showNotification('Файл слишком большой. Максимальный размер: 10MB', 'warning');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const jsonData = JSON.parse(e.target.result);
+            importRecipes(jsonData);
+        } catch (error) {
+            console.error('Ошибка парсинга JSON:', error);
+            showNotification('Ошибка чтения файла. Проверьте, что это корректный JSON файл', 'danger');
+        }
+    };
+    
+    reader.onerror = function() {
+        showNotification('Ошибка чтения файла', 'danger');
+    };
+    
+    reader.readAsText(file);
+    
+    // Очищаем input для возможности повторной загрузки того же файла
+    event.target.value = '';
+}
+
+// Импорт рецептов из JSON
+async function importRecipes(jsonData) {
+    try {
+        // Показываем подтверждение импорта
+        const confirmed = await confirmWithModal(
+            'Импорт рецептов',
+            `Вы уверены, что хотите импортировать рецепты из файла?`,
+            'Новые рецепты будут добавлены в базу данных. Существующие рецепты не будут изменены.'
+        );
+        
+        if (!confirmed) {
+            return;
+        }
+        
+        showNotification('Начинаем импорт рецептов...', 'info');
+        
+        const response = await fetch('/api/recipes/import', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(jsonData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Показываем детальный результат импорта
+            let message = data.message;
+            if (data.errors && data.errors.length > 0) {
+                message += '\n\nОшибки:\n' + data.errors.slice(0, 5).join('\n');
+                if (data.errors.length > 5) {
+                    message += `\n... и еще ${data.errors.length - 5} ошибок`;
+                }
+            }
+            
+            showNotification(message, data.errors && data.errors.length > 0 ? 'warning' : 'success', 8000);
+            
+            // Перезагружаем список рецептов
+            setTimeout(async () => {
+                await loadAllRecipes();
+            }, 1000);
+        } else {
+            showNotification('Ошибка импорта: ' + (data.error || 'Неизвестная ошибка'), 'danger');
+        }
+    } catch (error) {
+        console.error('Ошибка импорта:', error);
+        showNotification('Ошибка при импорте рецептов', 'danger');
+    }
 }
 
 </script>
